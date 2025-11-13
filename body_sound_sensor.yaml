@@ -40,6 +40,11 @@ wifi:
 
 captive_portal:
 
+# Wall clock time (optional but recommended for epoch timestamps)
+time:
+  - platform: sntp
+    id: sntp_time
+
 # I2C bus for MPU sensor
 i2c:
   sda: 21
@@ -51,6 +56,7 @@ i2c:
 mpu_fft_json:
   id: mpu_fft
   address: 0x68
+  time_id: sntp_time
   # Limit band analysis to a maximum frequency (Hz); set to 0 or omit for full Nyquist
   max_analysis_hz: 300.0
   # Optional tuning (change requires firmware update / device reboot):
@@ -98,6 +104,10 @@ sensor:
     max_analysis_hz:
       name: "Body Sound Max Analysis Hz"
       unit_of_measurement: "Hz"
+      entity_category: diagnostic
+    window_shift:
+      name: "Body Sound Window Shift"
+      unit_of_measurement: "samples"
       entity_category: diagnostic
 
   - platform: uptime

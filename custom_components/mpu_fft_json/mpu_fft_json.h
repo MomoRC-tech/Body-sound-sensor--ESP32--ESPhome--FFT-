@@ -2,6 +2,7 @@
 
 #include "esphome.h"
 #include "arduinoFFT.h"
+#include "esphome/components/time/real_time_clock.h"
 #include <cmath>
 
 using namespace esphome;
@@ -33,6 +34,7 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
   void set_window_shift(uint16_t v) { window_shift_ = v; }
   void set_dc_alpha(float v) { dc_alpha_ = v; }
   void set_load_window_us(uint32_t v) { load_window_us_ = v; }
+  void set_time(time::RealTimeClock *t) { time_ = t; }
 
   // Diagnostics
   void set_bin_hz_sensor(sensor::Sensor *s) { bin_hz_sensor_ = s; }
@@ -40,6 +42,7 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
   void set_fft_samples_sensor(sensor::Sensor *s) { fft_samples_sensor_ = s; }
   void set_fft_bands_sensor(sensor::Sensor *s) { fft_bands_sensor_ = s; }
   void set_max_analysis_hz_sensor(sensor::Sensor *s) { max_analysis_hz_sensor_ = s; }
+  void set_window_shift_sensor(sensor::Sensor *s) { window_shift_sensor_ = s; }
 
   ~MPUFftJsonComponent() {
     delete[] vReal_;
@@ -154,6 +157,7 @@ protected:
   sensor::Sensor *fft_samples_sensor_{nullptr};
   sensor::Sensor *fft_bands_sensor_{nullptr};
   sensor::Sensor *max_analysis_hz_sensor_{nullptr};
+  sensor::Sensor *window_shift_sensor_{nullptr};
 
   // Buffers
   double *vReal_{nullptr};
@@ -177,6 +181,10 @@ protected:
   uint32_t load_window_us_{LOAD_WINDOW_US_DEFAULT};
   uint32_t sample_period_us_{(uint32_t)(1000000.0f / 1000.0f)};
   float max_analysis_hz_{300.0f};
+  uint32_t seq_{0};
+  time::RealTimeClock *time_{nullptr};
+  uint64_t epoch_base_ms_{0};
+  bool epoch_base_set_{false};
 
   bool read_accel_g_(float &ax, float &ay, float &az) {
     uint8_t data[6];
@@ -273,8 +281,30 @@ protected:
     if (max_analysis_hz_sensor_) {
       max_analysis_hz_sensor_->publish_state(f_max);
     }
+    if (window_shift_sensor_) {
+      window_shift_sensor_->publish_state((float)window_shift_);
+    }
 
     // JSON
+    // Timing metadata derived from sampling schedule
+    uint32_t win_us = (uint32_t)fft_samples_ * sample_period_us_;
+    uint32_t hop_us = (uint32_t)window_shift_ * sample_period_us_;
+    uint32_t end_us = last_sample_us_;
+    uint32_t center_us = end_us - (win_us / 2u);
+    uint32_t ts_ms = center_us / 1000u;  // monotonic since boot
+
+    // Establish epoch base when time becomes valid (once)
+    if (!epoch_base_set_ && time_ != nullptr) {
+      auto now = time_->now();
+      if (now.is_valid()) {
+        uint64_t now_ms = (uint64_t)now.timestamp * 1000ULL;
+        uint64_t mono_ms = (uint64_t)esphome::millis();
+        epoch_base_ms_ = now_ms - mono_ms;
+        epoch_base_set_ = true;
+      }
+    }
+    uint64_t epoch_ms = epoch_base_set_ ? (epoch_base_ms_ + (uint64_t)ts_ms) : 0ULL;
+
     String json = "{";
     json += "\"fs\":" + String(sample_frequency_, 1) + ",";
     json += "\"n\":" + String(fft_samples_) + ",";
@@ -282,6 +312,13 @@ protected:
     json += "\"rms\":" + String(rms, 6) + ",";
     json += "\"peak_hz\":" + String(peak_freq, 2) + ",";
     json += "\"max_analysis_hz\":" + String(f_max, 1) + ",";
+    json += "\"ts_ms\":" + String(ts_ms) + ",";
+    json += "\"win_ms\":" + String((double)win_us / 1000.0, 1) + ",";
+    json += "\"hop_ms\":" + String((double)hop_us / 1000.0, 1) + ",";
+    json += "\"seq\":" + String(seq_) + ",";
+    if (epoch_base_set_) {
+      json += "\"epoch_ms\":" + String((double)epoch_ms, 0) + ",";
+    }
     json += "\"bands\":[]";  // placeholder replace next block
 
     // Build bands array
@@ -342,6 +379,9 @@ protected:
     if (spectrum_text_) {
       spectrum_text_->publish_state(json.c_str());
     }
+
+    // advance sequence counter
+    seq_++;
   }
 };
 

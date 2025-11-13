@@ -16,12 +16,17 @@ from datetime import datetime
 # Example JSON spectrum data (as received from the text sensor)
 example_json = '''
 {
-  "fs": 1000.0,
-  "n": 512,
-  "bin_hz": 1.953,
-  "rms": 0.012345,
-  "peak_hz": 49.2,
+    "fs": 1000.0,
+    "n": 512,
+    "bin_hz": 1.953,
+    "rms": 0.012345,
+    "peak_hz": 49.2,
     "max_analysis_hz": 300.0,
+    "ts_ms": 12345678,
+    "win_ms": 512.0,
+    "hop_ms": 256.0,
+    "seq": 42,
+    "epoch_ms": 1731492345123,
     "bands": [12.5, 8.3, 15.7, 22.1, 18.9, 11.2, 9.4, 7.8, 6.5, 5.2, 4.1, 3.3, 2.8, 2.1, 1.5, 1.2],
     "band_center": [9.4, 28.1, 46.9, 65.6, 84.4, 103.1, 121.9, 140.6, 159.4, 178.1, 196.9, 215.6, 234.4, 253.1, 271.9, 290.6],
     "band_low":    [0.0, 18.8, 37.5, 56.3, 75.0, 93.8, 112.5, 131.3, 150.0, 168.8, 187.5, 206.3, 225.0, 243.8, 262.5, 281.3],
@@ -77,7 +82,18 @@ def visualize_spectrum(spectrum_data):
             edgecolor='black', alpha=0.7)
     ax1.set_xlabel('Frequency (Hz)')
     ax1.set_ylabel('Energy (arbitrary units)')
-    ax1.set_title(f'Spectrum Bands (RMS: {spectrum_data["rms"]:.4f}g, Peak: {spectrum_data["peak_hz"]:.1f}Hz)')
+    # Build a timestamp string
+    ts_str = None
+    if 'epoch_ms' in spectrum_data:
+        try:
+            ts_str = datetime.fromtimestamp(spectrum_data['epoch_ms'] / 1000.0).isoformat(sep=' ', timespec='seconds')
+        except Exception:
+            ts_str = None
+    elif 'ts_ms' in spectrum_data:
+        ts_str = f"t+{spectrum_data['ts_ms']/1000.0:.3f}s"
+
+    title_extra = f" @ {ts_str}" if ts_str else ""
+    ax1.set_title(f"Spectrum Bands (RMS: {spectrum_data['rms']:.4f}g, Peak: {spectrum_data['peak_hz']:.1f}Hz){title_extra}")
     ax1.grid(True, alpha=0.3)
     
     # Plot 2: Band energies in dB scale (log)
@@ -89,6 +105,66 @@ def visualize_spectrum(spectrum_data):
     ax2.set_title('Spectrum Bands (dB scale)')
     ax2.grid(True, alpha=0.3)
     
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_band_over_time(spectra, band_index=0, use_epoch=True, log_scale=False):
+    """Plot a single band energy over time.
+
+    Args:
+        spectra: Iterable of parsed spectrum dicts (each payload from the device)
+        band_index: Index of the band to plot (0-based)
+        use_epoch: If True, use `epoch_ms` when present; otherwise use `ts_ms`
+        log_scale: If True, plot band energy in dB (10*log10(x+eps))
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    times = []
+    values = []
+    for s in spectra:
+        bands = s.get('bands')
+        if not bands or band_index >= len(bands):
+            continue
+        val = float(bands[band_index])
+        if log_scale:
+            val = 10.0 * np.log10(val + 1e-12)
+
+        # Choose time source
+        t = None
+        if use_epoch and ('epoch_ms' in s) and s['epoch_ms']:
+            t = datetime.fromtimestamp(s['epoch_ms'] / 1000.0)
+        elif 'ts_ms' in s:
+            # Plot as relative seconds since device boot
+            t = s['ts_ms'] / 1000.0
+        else:
+            # Fallback to current time ordering only
+            t = None
+
+        if t is not None:
+            times.append(t)
+            values.append(val)
+
+    if not times:
+        print("No valid timing information to plot.")
+        return
+
+    plt.figure(figsize=(12, 4))
+    if isinstance(times[0], datetime):
+        # Datetime x-axis
+        plt.plot(times, values, marker='o', linewidth=1)
+        plt.gcf().autofmt_xdate()
+        plt.xlabel('Time (wall clock)')
+    else:
+        # Relative seconds
+        plt.plot(times, values, marker='o', linewidth=1)
+        plt.xlabel('Time (s since boot)')
+
+    ylabel = 'Band Energy (dB)' if log_scale else 'Band Energy (a.u.)'
+    plt.ylabel(ylabel)
+    plt.title(f'Band {band_index} Energy Over Time')
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
 
@@ -142,16 +218,29 @@ def log_spectrum_to_file(spectrum_data, label, filename='spectrum_log.csv'):
         
         # Write header if new file
         if not file_exists:
-            header = ['timestamp', 'label', 'rms', 'peak_hz']
+            header = ['timestamp', 'label', 'rms', 'peak_hz', 'seq', 'ts_ms', 'epoch_ms']
             header.extend([f'band_{i}' for i in range(len(spectrum_data['bands']))])
             writer.writerow(header)
         
         # Write data row
+        # Prefer device epoch if available; else local now
+        human_ts = None
+        if 'epoch_ms' in spectrum_data:
+            try:
+                human_ts = datetime.fromtimestamp(spectrum_data['epoch_ms']/1000.0).isoformat()
+            except Exception:
+                human_ts = None
+        if human_ts is None:
+            human_ts = datetime.now().isoformat()
+
         row = [
-            datetime.now().isoformat(),
+            human_ts,
             label,
             spectrum_data['rms'],
-            spectrum_data['peak_hz']
+            spectrum_data['peak_hz'],
+            spectrum_data.get('seq'),
+            spectrum_data.get('ts_ms'),
+            spectrum_data.get('epoch_ms'),
         ]
         row.extend(spectrum_data['bands'])
         writer.writerow(row)
@@ -290,6 +379,25 @@ def main():
         # Visualize
         print("Generating visualization...")
         visualize_spectrum(spectrum_data)
+
+        # Tiny demo: accumulate spectra and plot a band over time
+        # This simulates a short run using the example payload; in real use, append live payloads.
+        spectra = []
+        base = spectrum_data.copy()
+        hop_ms = int(base.get('hop_ms', 250))
+        epoch = int(base.get('epoch_ms', 0))
+        ts = int(base.get('ts_ms', 0))
+        seq = int(base.get('seq', 0))
+        for i in range(12):
+            d = base.copy()
+            d['seq'] = seq + i
+            d['ts_ms'] = ts + i * hop_ms
+            if epoch:
+                d['epoch_ms'] = epoch + i * hop_ms
+            spectra.append(d)
+
+        print("Plotting band 2 energy over time (demo)...")
+        plot_band_over_time(spectra, band_index=2, use_epoch=bool(epoch), log_scale=False)
     
     # Uncomment to connect to Home Assistant WebSocket
     # connect_to_homeassistant_websocket()

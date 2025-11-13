@@ -17,6 +17,7 @@ CONF_FS = "sample_frequency"
 CONF_FFT_SAMPLES = "fft_samples"
 CONF_FFT_BANDS = "fft_bands"
 CONF_MAX_ANALYSIS_HZ = "max_analysis_hz"
+CONF_WINDOW_SHIFT_DIAG = "window_shift"
 
 # Custom unit for acceleration
 UNIT_G = "g"
@@ -65,6 +66,12 @@ CONFIG_SCHEMA = cv.Schema(
             device_class=DEVICE_CLASS_EMPTY,
             state_class=STATE_CLASS_MEASUREMENT,
         ),
+        cv.Optional(CONF_WINDOW_SHIFT_DIAG): sensor.sensor_schema(
+            unit_of_measurement="samples",
+            accuracy_decimals=0,
+            device_class=DEVICE_CLASS_EMPTY,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
     }
 )
 
@@ -100,3 +107,7 @@ async def to_code(config):
     if max_config := config.get(CONF_MAX_ANALYSIS_HZ):
         sens = await sensor.new_sensor(max_config)
         cg.add(parent.set_max_analysis_hz_sensor(sens))
+
+    if ws_config := config.get(CONF_WINDOW_SHIFT_DIAG):
+        sens = await sensor.new_sensor(ws_config)
+        cg.add(parent.set_window_shift_sensor(sens))

@@ -2,6 +2,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import i2c
+from esphome.components import time as time_comp
 from esphome.const import CONF_ID
 
 CODEOWNERS = ["@MomoRC-tech"]
@@ -16,6 +17,7 @@ CONF_FFT_BANDS = "fft_bands"
 CONF_WINDOW_SHIFT = "window_shift"
 CONF_DC_ALPHA = "dc_alpha"
 CONF_LOAD_WINDOW_US = "load_window_us"
+CONF_TIME_ID = "time_id"
 
 mpu_fft_json_ns = cg.esphome_ns.namespace("mpu_fft_json")
 MPUFftJsonComponent = mpu_fft_json_ns.class_(
@@ -33,6 +35,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_WINDOW_SHIFT, default=0): cv.int_range(min=0, max=4096),
             cv.Optional(CONF_DC_ALPHA, default=0.01): cv.float_,
             cv.Optional(CONF_LOAD_WINDOW_US, default=1000000): cv.positive_int,
+            cv.Optional(CONF_TIME_ID): cv.use_id(time_comp.RealTimeClock),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -64,3 +67,8 @@ async def to_code(config):
 
     # Add the library dependency
     cg.add_library("arduinoFFT", "^2.0.4")
+
+    # Optional time component for wall-clock epoch
+    if CONF_TIME_ID in config:
+        time_var = await cg.get_variable(config[CONF_TIME_ID])
+        cg.add(var.set_time(time_var))
