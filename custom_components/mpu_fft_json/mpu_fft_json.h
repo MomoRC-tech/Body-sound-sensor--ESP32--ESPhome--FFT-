@@ -15,110 +15,110 @@ using namespace esphome;
 
 // FFT configuration (defaults; can be overridden via YAML)
 
-// High-pass filter coefficient for DC removal
-// High-pass filter coefficient for DC removal (configurable)
-static const float    DC_ALPHA_DEFAULT  = 0.01f;
-
-// CPU load measurement window (1 second)
-// CPU load measurement window default (configurable)
-static const uint32_t LOAD_WINDOW_US_DEFAULT = 1000000;
-
-// MPU-9250/6500/6050 Register addresses
-static const uint8_t  MPU_PWR_MGMT_1    = 0x6B;
-static const uint8_t  MPU_ACCEL_XOUT_H  = 0x3B;
-
-// Accelerometer scaling for MPU6050 (±2g range, 16384 LSB/g)
-static const float    ACCEL_SCALE       = 1.0f / 16384.0f;
-
-// ============================================================================
-// MPU FFT JSON Component Class
-// ============================================================================
-
-namespace mpu_fft_json {
-
-class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
-public:
-  // Setter methods for ESPHome external component pattern
-  void set_rms_sensor(sensor::Sensor *sensor) { rms_sensor_ = sensor; }
-  void set_cpu_load_sensor(sensor::Sensor *sensor) { cpu_load_sensor_ = sensor; }
-  void set_spectrum_text_sensor(text_sensor::TextSensor *sensor) { spectrum_text_ = sensor; }
-  void set_max_analysis_hz(float hz) { max_analysis_hz_ = hz; }
-  void set_sample_frequency(float fs) { sample_frequency_ = fs; }
-  void set_fft_samples(uint16_t n) { fft_samples_ = n; }
-  void set_fft_bands(uint8_t b) { fft_bands_ = b; }
-  void set_window_shift(uint16_t s) { window_shift_ = s; }
-  void set_dc_alpha(float a) { dc_alpha_ = a; }
-  void set_load_window_us(uint32_t us) { load_window_us_ = us; }
-
-  MPUFftJsonComponent() = default;
-
-  void setup() override {
-    ESP_LOGD("MPU_FFT", "Setting up MPU6050 FFT Component...");
-
-    // Wake up MPU6050 (clear sleep bit in PWR_MGMT_1)
-    if (!this->write_byte(MPU_PWR_MGMT_1, 0x00)) {
-      ESP_LOGE("MPU_FFT", "Failed to wake up MPU6050 sensor!");
-      this->mark_failed();
-      return;
-    }
-
-    esphome::delay(100);  // Give sensor time to wake up
-
-    // Apply derived parameters and allocate buffers
-    if (fft_samples_ < 64) fft_samples_ = 64; // basic sanity
-    sample_period_us_ = (uint32_t)(1000000.0f / sample_frequency_);
-
-    // Allocate FFT buffers
-    vReal_ = new double[fft_samples_];
-    vImag_ = new double[fft_samples_];
-
-    // Initialize timing and state
-    last_sample_us_ = esphome::micros();
-    sample_index_ = 0;
-    dc_avg_ = 1.0f;  // Initialize to ~1g (gravity)
-
-    // Initialize CPU load tracking
-    load_window_start_us_ = last_sample_us_;
-    busy_time_us_ = 0;
-
-    // Clear buffers
+  void process_window_() {
+    // 1. Compute time-domain RMS
+    double sum_sq = 0.0;
     for (uint16_t i = 0; i < fft_samples_; i++) {
-      vReal_[i] = 0.0;
-      vImag_[i] = 0.0;
+      sum_sq += vReal_[i] * vReal_[i];
+    }
+    float rms = sqrt(sum_sq / fft_samples_);
+
+    // Publish RMS
+    if (rms_sensor_) {
+      rms_sensor_->publish_state(rms);
     }
 
-    ESP_LOGI("MPU_FFT", "MPU FFT Component initialized successfully");
-    ESP_LOGI("MPU_FFT", "Sample rate: %.0f Hz, FFT size: %d, Bands: %d",
-         sample_frequency_, fft_samples_, fft_bands_);
-  }
+    // 2. Perform FFT (arduinoFFT v2 API)
+    ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal_, vImag_, fft_samples_, sample_frequency_);
+    FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);
+    FFT.compute(FFTDirection::Forward);
+    FFT.complexToMagnitude();
 
-  void loop() override {
-    uint32_t loop_start = esphome::micros();
-    uint32_t now = esphome::micros();
+    // 3. Compute spectral parameters
+    float bin_hz = sample_frequency_ / fft_samples_;
+    float f_nyquist = sample_frequency_ / 2.0f;
+    float f_max = (max_analysis_hz_ > 0.0f && max_analysis_hz_ < f_nyquist) ? max_analysis_hz_ : f_nyquist;
+    float band_width = f_max / (float)fft_bands_;
+    uint16_t nyquist = fft_samples_ / 2;
 
-    // Maintain constant sampling rate
-    if ((now - last_sample_us_) >= sample_period_us_) {
-      last_sample_us_ = now;
-      sample_once_();
-    }
-
-    // Update CPU load periodically
-    uint32_t window_elapsed = now - load_window_start_us_;
-    if (window_elapsed >= load_window_us_) {
-      float load = (float)busy_time_us_ / (float)window_elapsed;
-      float cpu_load = load * 100.0f;
-
-      if (cpu_load_sensor_ && (cpu_load_sensor_->has_state() || cpu_load > 1.0f)) {
-        cpu_load_sensor_->publish_state(cpu_load);
+    // 4. Find dominant frequency (peak)
+    double max_mag = 0.0;
+    uint16_t max_k = 0;
+    for (uint16_t k = 1; k < nyquist; k++) {
+      if (vReal_[k] > max_mag) {
+        max_mag = vReal_[k];
+        max_k = k;
       }
+    }
+    float peak_freq = max_k * bin_hz;
 
-      // Reset for next window
-      busy_time_us_ = 0;
-      load_window_start_us_ = now;
+    // 5. Publish diagnostics as sensors (if configured)
+    if (bin_hz_sensor_) bin_hz_sensor_->publish_state(bin_hz);
+    if (fs_sensor_) fs_sensor_->publish_state(sample_frequency_);
+    if (fft_samples_sensor_) fft_samples_sensor_->publish_state((float)fft_samples_);
+    if (fft_bands_sensor_) fft_bands_sensor_->publish_state((float)fft_bands_);
+    if (max_analysis_hz_sensor_) max_analysis_hz_sensor_->publish_state(f_max);
+
+    // 6. Build JSON string and compute band energies on the fly
+    String json = "{";
+    json += "\"fs\":" + String(sample_frequency_, 1) + ",";
+    json += "\"n\":" + String(fft_samples_) + ",";
+    json += "\"bin_hz\":" + String(bin_hz, 3) + ",";
+    json += "\"rms\":" + String(rms, 6) + ",";
+    json += "\"peak_hz\":" + String(peak_freq, 2) + ",";
+    json += "\"max_analysis_hz\":" + String(f_max, 1) + ",";
+    json += "\"bands\":[";
+
+    for (uint8_t b = 0; b < fft_bands_; b++) {
+      float f_start = b * band_width;
+      float f_end = (b + 1) * band_width;
+
+      uint16_t k_start = (uint16_t)(f_start / bin_hz);
+      uint16_t k_end = (uint16_t)(f_end / bin_hz + 0.5f);
+
+      if (k_start < 1) k_start = 1;
+      if (k_end >= nyquist) k_end = nyquist - 1;
+
+      double energy = 0.0;
+      for (uint16_t k = k_start; k <= k_end; k++) {
+        energy += vReal_[k] * vReal_[k];
+      }
+      if (b > 0) json += ",";
+      json += String(energy, 2);
     }
 
-    // Accumulate busy time
-    uint32_t loop_end = esphome::micros();
+    json += "],";
+
+    // Band metadata
+    json += "\"band_center\":[";
+    for (uint8_t b = 0; b < fft_bands_; b++) {
+      if (b > 0) json += ",";
+      float f_center = (b + 0.5f) * band_width;
+      json += String(f_center, 1);
+    }
+    json += "],";
+
+    json += "\"band_low\":[";
+    for (uint8_t b = 0; b < fft_bands_; b++) {
+      if (b > 0) json += ",";
+      float f_low = b * band_width;
+      json += String(f_low, 1);
+    }
+    json += "],";
+
+    json += "\"band_high\":[";
+    for (uint8_t b = 0; b < fft_bands_; b++) {
+      if (b > 0) json += ",";
+      float f_high = (b + 1) * band_width;
+      json += String(f_high, 1);
+    }
+    json += "]}";
+  void set_fs_sensor(sensor::Sensor *sensor) { fs_sensor_ = sensor; }
+    // Publish JSON spectrum
+    if (spectrum_text_) {
+      spectrum_text_->publish_state(json.c_str());
+    }
+      load_window_start_us_ = now;
     busy_time_us_ += (loop_end - loop_start);
   }
 
@@ -127,6 +127,12 @@ protected:
   sensor::Sensor *rms_sensor_{nullptr};
   sensor::Sensor *cpu_load_sensor_{nullptr};
   text_sensor::TextSensor *spectrum_text_{nullptr};
+  // Diagnostic sensors
+  sensor::Sensor *bin_hz_sensor_{nullptr};
+  sensor::Sensor *fs_sensor_{nullptr};
+  sensor::Sensor *fft_samples_sensor_{nullptr};
+  sensor::Sensor *fft_bands_sensor_{nullptr};
+  sensor::Sensor *max_analysis_hz_sensor_{nullptr};
 
   // FFT buffers
   double *vReal_{nullptr};
@@ -151,7 +157,7 @@ protected:
   uint32_t sample_period_us_ = (uint32_t)(1000000.0f / 1000.0f);
 
   // Configurable top analysis frequency (defaults to 300 Hz; clamped to Nyquist at runtime)
-  float max_analysis_hz_ = 300.0f;
+  float max_analysis_hz_ = 500.0f;
 
   // ========================================================================
   // Read accelerometer data in g units

@@ -153,6 +153,36 @@ Basic hardware requirements are:
 - `band_center`: Center frequency (Hz) of each band
 - `band_low` / `band_high`: Low/high edges (Hz) of each band
 
+#### Diagnostic Entities (optional)
+
+You can expose device settings as dedicated sensors so they appear on the Home Assistant device page:
+
+```yaml
+sensor:
+   - platform: mpu_fft_json
+      mpu_fft_json_id: mpu_fft
+      # ... existing RMS / CPU sensors ...
+      bin_hz:
+         name: "Body Sound FFT Bin Size"
+         entity_category: diagnostic
+      sample_frequency:
+         name: "Body Sound Sample Rate"
+         unit_of_measurement: "Hz"
+         entity_category: diagnostic
+      fft_samples:
+         name: "Body Sound FFT Size"
+         entity_category: diagnostic
+      fft_bands:
+         name: "Body Sound Band Count"
+         entity_category: diagnostic
+      max_analysis_hz:
+         name: "Body Sound Max Analysis Hz"
+         unit_of_measurement: "Hz"
+         entity_category: diagnostic
+```
+
+These update automatically from the firmware each time a new FFT window is processed.
+
 </details>
 
 ## Configuration & Tuning
