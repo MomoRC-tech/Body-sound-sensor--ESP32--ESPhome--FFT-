@@ -306,6 +306,7 @@ protected:
     uint64_t epoch_ms = epoch_base_set_ ? (epoch_base_ms_ + (uint64_t)ts_ms) : 0ULL;
 
     String json = "{";
+    json += "\"schema_version\":1,";  // public JSON contract version (increment on breaking changes)
     json += "\"fs\":" + String(sample_frequency_, 1) + ",";
     json += "\"n\":" + String(fft_samples_) + ",";
     json += "\"bin_hz\":" + String(bin_hz, 3) + ",";
