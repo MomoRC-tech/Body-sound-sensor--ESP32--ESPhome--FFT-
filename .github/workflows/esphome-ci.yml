@@ -1,0 +1,242 @@
+name: ESPHome CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate ESPHome Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install ESPHome (latest)
+        run: |
+          pip install esphome
+
+      - name: Create secrets file for validation
+        run: |
+          cat > secrets.yaml << EOF
+          wifi_ssid: "ValidationSSID"
+          wifi_password: "ValidationPassword"
+          api_encryption_key: "dGVzdGtleTE2Ynl0ZXNsb25nZXJ0aGFuMzI="
+          ota_password: "testpassword"
+          EOF
+
+      - name: Validate ESPHome configuration
+        run: |
+          echo "==> Validating YAML configuration..."
+          esphome config body_sound_sensor.yaml
+          
+          echo "==> Checking for common issues..."
+          # Check for placeholder values that should be in secrets
+          if grep -q "YOUR_.*_HERE" body_sound_sensor.yaml; then
+            echo "WARNING: Found placeholder values in YAML (should be in secrets.yaml)"
+          fi
+          
+          # Verify required files exist
+          if [ ! -f "mpu_fft_json.h" ]; then
+            echo "ERROR: mpu_fft_json.h not found"
+            exit 1
+          fi
+          
+          echo "✓ Configuration validation passed"
+
+  compile:
+    name: Compile Firmware
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-compile-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-compile-
+
+      - name: Cache ESPHome build
+        uses: actions/cache@v4
+        with:
+          path: .esphome/build
+          key: ${{ runner.os }}-esphome-${{ hashFiles('body_sound_sensor.yaml', 'mpu_fft_json.h') }}
+          restore-keys: |
+            ${{ runner.os }}-esphome-
+
+      - name: Install ESPHome (latest)
+        run: |
+          pip install esphome
+
+      - name: Create secrets file for compilation
+        run: |
+          cat > secrets.yaml << EOF
+          wifi_ssid: "MOMOWLAN"
+          wifi_password: "CompileTestPassword"
+          api_encryption_key: "dGVzdGtleTE2Ynl0ZXNsb25nZXJ0aGFuMzI="
+          ota_password: "testpassword"
+          EOF
+
+      - name: Compile firmware
+        run: |
+          echo "==> Starting firmware compilation..."
+          esphome compile body_sound_sensor.yaml
+          
+          echo "==> Verifying compiled firmware..."
+          FIRMWARE_PATH=".esphome/build/body_sound_sensor/.pioenvs/body_sound_sensor/firmware.bin"
+          
+          if [ ! -f "$FIRMWARE_PATH" ]; then
+            echo "ERROR: Firmware binary not found at $FIRMWARE_PATH"
+            exit 1
+          fi
+          
+          FIRMWARE_SIZE=$(stat -c%s "$FIRMWARE_PATH" 2>/dev/null || stat -f%z "$FIRMWARE_PATH")
+          echo "✓ Firmware compiled successfully"
+          echo "✓ Firmware size: $FIRMWARE_SIZE bytes"
+          
+          # Check if firmware is reasonable size (ESP32 typical range)
+          if [ "$FIRMWARE_SIZE" -lt 100000 ]; then
+            echo "WARNING: Firmware size is suspiciously small"
+            exit 1
+          fi
+          
+          if [ "$FIRMWARE_SIZE" -gt 2000000 ]; then
+            echo "WARNING: Firmware size is very large"
+          fi
+
+      # Note: Firmware is compiled for verification only
+      # Actual flashing is done via ESPHome on Home Assistant
+
+  lint:
+    name: Lint C++ Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check C++ syntax and style
+        run: |
+          echo "==> Checking C++ header file..."
+          
+          # Check for trailing whitespace
+          if grep -n "[[:space:]]$" mpu_fft_json.h; then
+            echo "ERROR: Trailing whitespace found"
+            exit 1
+          fi
+          
+          # Check for tabs (should use spaces)
+          if grep -P "\t" mpu_fft_json.h; then
+            echo "WARNING: Tabs found (prefer spaces)"
+          fi
+          
+          # Verify class definition exists
+          if ! grep -q "class MPUFftJsonComponent" mpu_fft_json.h; then
+            echo "ERROR: MPUFftJsonComponent class not found"
+            exit 1
+          fi
+          
+          # Check for required methods
+          if ! grep -q "void setup()" mpu_fft_json.h; then
+            echo "ERROR: setup() method not found"
+            exit 1
+          fi
+          
+          if ! grep -q "void loop()" mpu_fft_json.h; then
+            echo "ERROR: loop() method not found"
+            exit 1
+          fi
+          
+          echo "✓ Basic C++ syntax checks passed"
+
+      - name: Run clang-format check
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: '14'
+          check-path: '.'
+          include-regex: '^.*\.h$'
+
+  test-python:
+    name: Test Python Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          cd examples/python
+          pip install -r requirements.txt
+
+      - name: Test spectrum analyzer
+        run: |
+          cd examples/python
+          echo "==> Testing spectrum analysis functions..."
+          python -c "
+          import sys
+          from analyze_spectrum import parse_spectrum, extract_features, classify_device, compute_band_frequencies
+          
+          # Test JSON parsing
+          test_json = '{\"fs\":1000.0,\"n\":512,\"bin_hz\":1.953,\"rms\":0.012345,\"peak_hz\":49.2,\"bands\":[12.5,8.3,15.7,22.1,18.9,11.2,9.4,7.8,6.5,5.2,4.1,3.3,2.8,2.1,1.5,1.2]}'
+          
+          spectrum = parse_spectrum(test_json)
+          assert spectrum is not None, 'Failed to parse JSON'
+          assert spectrum['fs'] == 1000.0, 'Wrong sample frequency'
+          assert spectrum['n'] == 512, 'Wrong FFT size'
+          assert len(spectrum['bands']) == 16, 'Wrong number of bands'
+          print('✓ JSON parsing test passed')
+          
+          # Test feature extraction
+          features = extract_features(spectrum)
+          assert 'rms' in features, 'Missing RMS'
+          assert 'peak_hz' in features, 'Missing peak frequency'
+          assert 'band_mean' in features, 'Missing band mean'
+          assert 'spectral_centroid' in features, 'Missing spectral centroid'
+          assert features['rms'] == 0.012345, 'Wrong RMS value'
+          print('✓ Feature extraction test passed')
+          
+          # Test band frequency calculation
+          freqs = compute_band_frequencies(1000.0, 16)
+          assert len(freqs) == 16, 'Wrong number of frequencies'
+          assert freqs[0] > 0, 'First frequency should be positive'
+          assert freqs[-1] < 500, 'Last frequency should be < Nyquist'
+          print('✓ Band frequency calculation test passed')
+          
+          # Test classification
+          device = classify_device(spectrum)
+          assert device is not None, 'Classification returned None'
+          assert isinstance(device, str), 'Classification should return string'
+          print('✓ Classification test passed')
+          
+          print('✅ All Python tests passed!')
+          "
+

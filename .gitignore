@@ -1,0 +1,34 @@
+# ESPHome
+.esphome/
+secrets.yaml
+
+# Python virtual environment
+.venv/
+venv/
+
+# Build artifacts (not needed in repo)
+*.bin
+*.elf
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Build artifacts
+*.bin
+*.elf
+
+# OS
+.DS_Store
+Thumbs.db

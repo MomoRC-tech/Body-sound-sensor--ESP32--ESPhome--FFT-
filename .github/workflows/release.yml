@@ -1,0 +1,268 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options: [patch, minor, major]
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        type: string
+
+jobs:
+  test-and-release:
+    name: Test, Build, and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies (latest ESPHome)
+        run: |
+          pip install esphome
+          pip install semver
+
+      - name: Create secrets file for testing
+        run: |
+          cat > secrets.yaml << 'EOF'
+          wifi_ssid: "MOMOWLAN"
+          wifi_password: "TestPassword123"
+          api_encryption_key: "dGVzdGtleTE2Ynl0ZXNsb25nZXJ0aGFuMzI="
+          ota_password: "testpassword"
+          EOF
+
+      - name: Validate ESPHome configuration
+        run: |
+          echo "==> Validating ESPHome YAML configuration..."
+          esphome config body_sound_sensor.yaml
+
+      - name: Check C++ syntax (basic)
+        run: |
+          echo "==> Checking C++ header for syntax issues..."
+          if grep -n "\s$" mpu_fft_json.h; then
+            echo "ERROR: Trailing whitespace found in mpu_fft_json.h"
+            exit 1
+          fi
+          if ! grep -q "MPUFftJsonComponent" mpu_fft_json.h; then
+            echo "ERROR: Main class not found in mpu_fft_json.h"
+            exit 1
+          fi
+          echo "Basic syntax checks passed"
+
+      - name: Compile firmware (verification only)
+        run: |
+          echo "==> Compiling firmware..."
+          esphome compile body_sound_sensor.yaml
+          FIRMWARE_PATH=".esphome/build/body_sound_sensor/.pioenvs/body_sound_sensor/firmware.bin"
+          if [ ! -f "$FIRMWARE_PATH" ]; then
+            echo "ERROR: Firmware compilation failed - binary not found"
+            exit 1
+          fi
+          FIRMWARE_SIZE=$(stat -f%z "$FIRMWARE_PATH" 2>/dev/null || stat -c%s "$FIRMWARE_PATH")
+          echo "Firmware size: $FIRMWARE_SIZE bytes"
+          if [ "$FIRMWARE_SIZE" -lt 100000 ]; then
+            echo "WARNING: Firmware size suspiciously small"
+          fi
+
+      - name: Run Python tests
+        run: |
+          echo "==> Running Python analysis tests..."
+          cd examples/python
+          pip install -r requirements.txt
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from analyze_spectrum import parse_spectrum, extract_features, classify_device
+          test_json = '{\"fs\":1000.0,\"n\":512,\"bin_hz\":1.953,\"rms\":0.012345,\"peak_hz\":49.2,\"bands\":[12.5,8.3,15.7,22.1,18.9,11.2,9.4,7.8,6.5,5.2,4.1,3.3,2.8,2.1,1.5,1.2]}'
+          spectrum = parse_spectrum(test_json)
+          assert spectrum is not None, 'Failed to parse JSON'
+          assert 'fs' in spectrum, 'Missing fs field'
+          assert 'bands' in spectrum, 'Missing bands field'
+          assert len(spectrum['bands']) == 16, 'Wrong number of bands'
+          features = extract_features(spectrum)
+          assert 'rms' in features, 'Missing RMS in features'
+          assert 'peak_hz' in features, 'Missing peak_hz in features'
+          device = classify_device(spectrum)
+          assert device is not None, 'Classification failed'
+          print('✓ All Python tests passed')
+          "
+
+      - name: Determine current version
+        id: current_version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Current version: $LATEST_TAG"
+
+      - name: Calculate new version
+        id: new_version
+        run: |
+          python << 'EOF'
+          import os, re
+          latest_tag = os.environ.get('LATEST_TAG') or ''
+          if not latest_tag:
+              latest_tag = "${{ steps.current_version.outputs.latest_tag }}"
+          bump_type = "${{ github.event.inputs.version_bump }}"
+          version = latest_tag.lstrip('v')
+          m = re.match(r'(\d+)\.(\d+)\.(\d+)', version)
+          if not m:
+              major, minor, patch = 0,0,0
+          else:
+              major, minor, patch = map(int, m.groups())
+          if bump_type == 'major':
+              major, minor, patch = major+1, 0, 0
+          elif bump_type == 'minor':
+              minor, patch = minor+1, 0
+          else:
+              patch += 1
+          new_version = f"v{major}.{minor}.{patch}"
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write(f"version={new_version}\n")
+              f.write(f"version_number={major}.{minor}.{patch}\n")
+          print(f"New version: {new_version}")
+          EOF
+
+      - name: Update CHANGELOG.md and README.md
+        run: |
+          VERSION="${{ steps.new_version.outputs.version }}"
+          PREV_VERSION="${{ steps.current_version.outputs.latest_tag }}"
+          DATE=$(date +'%Y-%m-%d')
+          ESPHOME_VER=$(esphome version | tr -d '\r')
+          CHANGELOG_BODY=$(git log ${PREV_VERSION}..HEAD --pretty=format:"- %s" 2>/dev/null || echo "- Initial release")
+          if [ ! -f CHANGELOG.md ]; then
+            cat > CHANGELOG.md << 'EOF'
+            # Changelog
+
+            All notable changes to this project will be documented in this file.
+
+            This project adheres to Semantic Versioning.
+            EOF
+          fi
+          TMP_FILE=$(mktemp)
+          echo "# Changelog" > "$TMP_FILE"
+          echo "" >> "$TMP_FILE"
+          echo "## ${VERSION} - ${DATE}" >> "$TMP_FILE"
+          echo "" >> "$TMP_FILE"
+          echo "$CHANGELOG_BODY" >> "$TMP_FILE"
+          echo "" >> "$TMP_FILE"
+          awk 'NR>1{print}' CHANGELOG.md >> "$TMP_FILE"
+          mv "$TMP_FILE" CHANGELOG.md
+          if grep -q "VERSION:START" README.md; then
+            awk -v ver="$VERSION" -v d="$DATE" -v e="$ESPHOME_VER" 'BEGIN{start=0} { if ($0 ~ /VERSION:START/) {print $0; print "Latest Release: " ver " (" d ")"; print "Tested with ESPHome: " e; start=1; next} if (start==1 && $0 ~ /VERSION:END/) {start=0} if (start==0) print $0 }' README.md > README.md.tmp && mv README.md.tmp README.md
+          else
+            awk -v ver="$VERSION" -v d="$DATE" -v e="$ESPHOME_VER" 'NR==1{print; print ""; print "<!-- VERSION:START -->"; print "Latest Release: " ver " (" d ")"; print "Tested with ESPHome: " e; print "<!-- VERSION:END -->"; next}1' README.md > README.md.tmp && mv README.md.tmp README.md
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md README.md
+          git commit -m "chore(release): update CHANGELOG and README for ${VERSION}" || echo "No changes to commit"
+          git push origin HEAD:${GITHUB_REF##*/}
+
+      - name: Create release tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION="${{ steps.new_version.outputs.version }}"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.new_version.outputs.version }}"
+          PREV_VERSION="${{ steps.current_version.outputs.latest_tag }}"
+          CUSTOM_NOTES="${{ github.event.inputs.release_notes }}"
+          ESPHOME_VER=$(esphome version | tr -d '\r')
+          CHANGELOG=$(git log ${PREV_VERSION}..HEAD --pretty=format:"- %s" 2>/dev/null || echo "- Initial release")
+          cat > release_notes.md << EOF
+          # Release $VERSION
+
+          Tested with ESPHome: $ESPHOME_VER
+
+          ## Changes
+          $CHANGELOG
+
+          ## Hardware Configuration
+          - **MCU**: ESP32-WROOM D1 Mini
+          - **Sensor**: MPU6050
+          - **I²C Address**: 0x68 (default)
+
+          ## Installation
+
+          ### Via ESPHome Dashboard (Recommended)
+          1. Copy project files to your Home Assistant ESPHome directory
+          2. Edit \`secrets.yaml\` with your WiFi credentials
+          3. Use ESPHome dashboard to compile and upload
+
+          ### Via Command Line (latest ESPHome)
+          \`\`\`bash
+          # Clone repository
+          git clone https://github.com/${{ github.repository }}.git
+          cd Body-sound-sensor--ESP32--ESPhome--FFT-
+
+          # Configure secrets
+          cp secrets.yaml.example secrets.yaml
+          # Edit secrets.yaml with your WiFi credentials
+
+          # Upload to ESP32 (requires latest ESPHome)
+          esphome upload body_sound_sensor.yaml
+          \`\`\`
+
+          **Note:** Releases include source and documentation. Flash via ESPHome on Home Assistant.
+
+          ## Configuration Parameters
+          - Sample Frequency: 1000 Hz
+          - FFT Size: 512 samples
+          - Frequency Bands: 16
+          - Overlap: 50%
+
+          EOF
+          if [ -n "$CUSTOM_NOTES" ]; then
+            echo "" >> release_notes.md
+            echo "## Additional Notes" >> release_notes.md
+            echo "$CUSTOM_NOTES" >> release_notes.md
+          fi
+          echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release (no binaries)
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.new_version.outputs.version }}
+          name: Release ${{ steps.new_version.outputs.version }}
+          body_path: ${{ steps.release_notes.outputs.notes_file }}
+          draft: false
+          prerelease: false
+          files: |
+            body_sound_sensor.yaml
+            mpu_fft_json.h
+            secrets.yaml.example
+            README.md
+            CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Version**: ${{ steps.new_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Type**: ${{ github.event.inputs.version_bump }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Tests**: All passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Compilation**: Success" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Release**: Published (source-only)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "View release: https://github.com/${{ github.repository }}/releases/tag/${{ steps.new_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY

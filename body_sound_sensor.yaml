@@ -1,0 +1,99 @@
+esphome:
+  name: body_sound_sensor
+  friendly_name: Body Sound Sensor
+  comment: "ESP32-WROOM D1 Mini vibration sensor with MPU6050 for structure-borne noise detection"
+
+# External component for MPU FFT processing
+external_components:
+  - source:
+      type: local
+      path: custom_components
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# Enable OTA updates
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+# WiFi configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot (captive portal) in case WiFi connection fails
+  ap:
+    ssid: "Body Sound Sensor Fallback"
+    password: "12345678"
+
+captive_portal:
+
+# I2C bus for MPU sensor
+i2c:
+  sda: 21
+  scl: 22
+  scan: true
+  frequency: 400kHz
+
+# MPU FFT JSON component
+mpu_fft_json:
+  id: mpu_fft
+  address: 0x68
+
+# Sensors from MPU FFT component
+sensor:
+  - platform: mpu_fft_json
+    mpu_fft_json_id: mpu_fft
+    rms:
+      name: "Body Sound Sensor RMS"
+      id: body_sound_rms
+      icon: "mdi:vibrate"
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    cpu_load:
+      name: "Body Sound Sensor FFT CPU Load"
+      id: body_sound_fft_cpu_load
+      icon: "mdi:cpu-64-bit"
+      filters:
+        - sliding_window_moving_average:
+            window_size: 10
+            send_every: 5
+
+  - platform: uptime
+    name: "Body Sound Sensor Uptime"
+    update_interval: 60s
+
+# Text sensor for spectrum JSON data
+text_sensor:
+  - platform: mpu_fft_json
+    mpu_fft_json_id: mpu_fft
+    spectrum:
+      name: "Body Sound Sensor Spectrum JSON"
+      id: body_sound_spectrum_json
+      icon: "mdi:waveform"
+
+  # WiFi Info
+  - platform: wifi_info
+    ip_address:
+      name: "Body Sound Sensor IP Address"
+    ssid:
+      name: "Body Sound Sensor Connected SSID"
+
+# Status indicator
+binary_sensor:
+  - platform: status
+    name: "Body Sound Sensor Status"
