@@ -7,18 +7,19 @@ Custom ESPHome component for ESP32-based vibration analysis using MPU6050 accele
 ```
 custom_components/mpu_fft_json/
 ├── __init__.py          # Component registration and I2C setup
-├── sensor.py            # Sensor platform (RMS, CPU load)
+├── sensor.py            # Sensor platform (RMS, CPU load, diagnostics)
 ├── text_sensor.py       # Text sensor platform (spectrum JSON)
 └── mpu_fft_json.h       # C++ implementation with arduinoFFT v2
 ```
 
 ## Features
 
-- **On-device FFT**: 512-sample FFT at 1 kHz using arduinoFFT v2.0.4
-- **Multi-band spectrum**: 16 frequency bands published as JSON
+- **On-device FFT**: FFT with configurable sample rate and size (default 1 kHz / 512)
+- **Multi-band spectrum**: Configurable band count (default 16), published as JSON
 - **RMS calculation**: Root mean square acceleration in g units
 - **CPU load monitoring**: Real-time processing overhead percentage
 - **50% window overlap**: Hamming windowing for smooth spectral analysis
+ - **Diagnostic sensors**: Bin size, sample rate, FFT size, band count, max analysis Hz
 
 ## Configuration
 
@@ -36,6 +37,14 @@ i2c:
 mpu_fft_json:
   id: mpu_fft
   address: 0x68  # MPU6050 I2C address (0x68 or 0x69)
+  # Optional tuning
+  sample_frequency: 1000.0
+  fft_samples: 512
+  fft_bands: 16
+  window_shift: 0            # 0 = 50% overlap
+  max_analysis_hz: 300.0     # Cap analyzed band range
+  dc_alpha: 0.01             # High-pass coefficient
+  load_window_us: 1000000    # CPU load window
 
 sensor:
   - platform: mpu_fft_json
@@ -44,6 +53,24 @@ sensor:
       name: "Vibration RMS"
     cpu_load:
       name: "FFT CPU Load"
+    # Optional diagnostics for HA device page
+    bin_hz:
+      name: "FFT Bin Size"
+      entity_category: diagnostic
+    sample_frequency:
+      name: "Sample Rate"
+      unit_of_measurement: "Hz"
+      entity_category: diagnostic
+    fft_samples:
+      name: "FFT Size"
+      entity_category: diagnostic
+    fft_bands:
+      name: "Band Count"
+      entity_category: diagnostic
+    max_analysis_hz:
+      name: "Max Analysis Hz"
+      unit_of_measurement: "Hz"
+      entity_category: diagnostic
 
 text_sensor:
   - platform: mpu_fft_json
@@ -60,12 +87,13 @@ text_sensor:
 
 ## Technical Details
 
-### DSP Parameters
+### DSP Parameters (defaults; configurable via YAML)
 - Sample rate: 1000 Hz
 - FFT size: 512 samples
 - Window: Hamming
-- Overlap: 50% (256 samples)
-- Frequency bands: 16 (0–500 Hz)
+- Overlap: 50% (256 samples or `window_shift: 0`)
+- Frequency bands: 16 (0–fs/2)
+- Max analysis Hz: 300.0 (clamped to Nyquist)
 - DC removal: High-pass filter (α=0.01)
 
 ### Output Format (JSON)
@@ -76,7 +104,11 @@ text_sensor:
   "bin_hz": 1.953,
   "rms": 0.123456,
   "peak_hz": 42.15,
-  "bands": [0.12, 0.34, 0.56, ...]
+  "max_analysis_hz": 300.0,
+  "bands": [0.12, 0.34, 0.56, ...],
+  "band_center": [9.4, 28.1, ...],
+  "band_low":    [0.0, 18.8, ...],
+  "band_high":   [18.8, 37.5, ...]
 }
 ```
 

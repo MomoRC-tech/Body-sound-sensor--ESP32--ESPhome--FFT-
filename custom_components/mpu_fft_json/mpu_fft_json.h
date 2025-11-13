@@ -157,7 +157,7 @@ protected:
   uint32_t sample_period_us_ = (uint32_t)(1000000.0f / 1000.0f);
 
   // Configurable top analysis frequency (defaults to 300 Hz; clamped to Nyquist at runtime)
-  float max_analysis_hz_ = 500.0f;
+  float max_analysis_hz_ = 300.0f;
 
   // ========================================================================
   // Read accelerometer data in g units

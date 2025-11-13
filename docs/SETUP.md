@@ -254,7 +254,7 @@ You should see RMS values change:
 
 Also check for JSON spectrum updates:
 ```
-[text_sensor:047]: 'Body Sound Spectrum JSON': Got value {"fs":1000.0,"n":512,"bin_hz":1.953,"rms":0.0234,"peak_hz":48.2,"bands":[...]}
+[text_sensor:047]: 'Body Sound Spectrum JSON': Got value {"fs":1000.0,"n":512,"bin_hz":1.953,"rms":0.0234,"peak_hz":48.2,"max_analysis_hz":300.0,"bands":[...],"band_center":[...],"band_low":[...],"band_high":[...]}
 ```
 
 ### 11. Add to Home Assistant
@@ -264,10 +264,11 @@ Also check for JSON spectrum updates:
 3. Look for "ESPHome" discovered device
 4. Click **Configure**
 5. Enter the API encryption key from `secrets.yaml`
-6. The device should appear with 3 sensors:
+6. The device should appear with these sensors:
    - Body Sound Vibration RMS
    - Body Sound FFT CPU Load
-   - Body Sound Spectrum JSON
+   - Body Sound Spectrum JSON (text sensor)
+   - Optional diagnostics (if enabled in YAML): Bin Size, Sample Rate, FFT Size, Band Count, Max Analysis Hz
 
 ### 12. Mount Sensor (Final Step)
 
@@ -297,18 +298,22 @@ Once confirmed working:
 
 ### Optimize Performance
 
-Monitor CPU Load in Home Assistant. If consistently >70%:
+Monitor CPU Load in Home Assistant. If consistently >70%, reduce workload via YAML and re-upload:
 
-1. Edit `mpu_fft_json.h`:
-   ```cpp
-   static const float    SAMPLE_FREQUENCY  = 500.0f;  // Reduce from 1000
-   static const uint16_t FFT_SAMPLES       = 256;     // Reduce from 512
-   ```
+```yaml
+mpu_fft_json:
+  id: mpu_fft
+  address: 0x68
+  sample_frequency: 500.0   # Reduce from 1000.0
+  fft_samples: 256          # Reduce from 512
+  fft_bands: 8              # Reduce band count if needed
+  max_analysis_hz: 250.0    # Lower top analysis frequency
+```
 
-2. Re-compile and upload:
-   ```powershell
-   esphome upload body_sound_sensor.yaml
-   ```
+Then re-upload:
+```powershell
+esphome upload body_sound_sensor.yaml
+```
 
 ### Calibrate Thresholds
 
@@ -367,9 +372,11 @@ esphome upload body_sound_sensor.yaml --device COM3
 
 ### Issue: Noisy RMS Readings
 
-Edit `mpu_fft_json.h`:
-```cpp
-static const float    DC_ALPHA = 0.001f;  // Stronger high-pass (was 0.01)
+Tune the high-pass and/or add averaging:
+
+```yaml
+mpu_fft_json:
+   dc_alpha: 0.001   # Stronger high-pass (was 0.01)
 ```
 
 Or add averaging in Home Assistant sensor configuration.
