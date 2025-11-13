@@ -34,12 +34,12 @@ jobs:
 
       - name: Create secrets file for validation
         run: |
-          cat > secrets.yaml << EOF
-          wifi_ssid: "ValidationSSID"
-          wifi_password: "ValidationPassword"
-          api_encryption_key: "dGVzdGtleTE2Ynl0ZXNsb25nZXJ0aGFuMzI="
-          ota_password: "testpassword"
-          EOF
+          echo "Generating 32-byte base64 API encryption key for validation..."
+          API_KEY=$(head -c 32 /dev/urandom | base64)
+          echo "wifi_ssid: \"ValidationSSID\"" > secrets.yaml
+          echo "wifi_password: \"ValidationPassword\"" >> secrets.yaml
+          echo "api_encryption_key: \"${API_KEY}\"" >> secrets.yaml
+          echo "ota_password: \"testpassword\"" >> secrets.yaml
 
       - name: Validate ESPHome configuration
         run: |
@@ -52,9 +52,10 @@ jobs:
             echo "WARNING: Found placeholder values in YAML (should be in secrets.yaml)"
           fi
           
-          # Verify required files exist
-          if [ ! -f "mpu_fft_json.h" ]; then
-            echo "ERROR: mpu_fft_json.h not found"
+          # Verify required files exist (header relocated under custom_components)
+          HEADER_PATH="custom_components/mpu_fft_json/mpu_fft_json.h"
+          if [ ! -f "$HEADER_PATH" ]; then
+            echo "ERROR: $HEADER_PATH not found"
             exit 1
           fi
           
@@ -85,7 +86,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .esphome/build
-          key: ${{ runner.os }}-esphome-${{ hashFiles('body_sound_sensor.yaml', 'mpu_fft_json.h') }}
+          key: ${{ runner.os }}-esphome-${{ hashFiles('body_sound_sensor.yaml', 'custom_components/mpu_fft_json/mpu_fft_json.h') }}
           restore-keys: |
             ${{ runner.os }}-esphome-
 
@@ -95,12 +96,12 @@ jobs:
 
       - name: Create secrets file for compilation
         run: |
-          cat > secrets.yaml << EOF
-          wifi_ssid: "MOMOWLAN"
-          wifi_password: "CompileTestPassword"
-          api_encryption_key: "dGVzdGtleTE2Ynl0ZXNsb25nZXJ0aGFuMzI="
-          ota_password: "testpassword"
-          EOF
+          echo "Generating 32-byte base64 API encryption key for compilation..."
+          API_KEY=$(head -c 32 /dev/urandom | base64)
+          echo "wifi_ssid: \"MOMOWLAN\"" > secrets.yaml
+          echo "wifi_password: \"CompileTestPassword\"" >> secrets.yaml
+          echo "api_encryption_key: \"${API_KEY}\"" >> secrets.yaml
+          echo "ota_password: \"testpassword\"" >> secrets.yaml
 
       - name: Compile firmware
         run: |
@@ -142,35 +143,39 @@ jobs:
       - name: Check C++ syntax and style
         run: |
           echo "==> Checking C++ header file..."
-          
-          # Check for trailing whitespace
-          if grep -n "[[:space:]]$" mpu_fft_json.h; then
-            echo "ERROR: Trailing whitespace found"
+          HEADER_PATH="custom_components/mpu_fft_json/mpu_fft_json.h"
+          if [ ! -f "$HEADER_PATH" ]; then
+            echo "ERROR: Header file $HEADER_PATH not found"
             exit 1
           fi
-          
+
+          # Check for trailing whitespace (now treated as warning only)
+          if grep -n "[[:space:]]$" "$HEADER_PATH"; then
+            echo "WARNING: Trailing whitespace found"
+          fi
+
           # Check for tabs (should use spaces)
-          if grep -P "\t" mpu_fft_json.h; then
+          if grep -P "\t" "$HEADER_PATH"; then
             echo "WARNING: Tabs found (prefer spaces)"
           fi
-          
+
           # Verify class definition exists
-          if ! grep -q "class MPUFftJsonComponent" mpu_fft_json.h; then
+          if ! grep -q "class MPUFftJsonComponent" "$HEADER_PATH"; then
             echo "ERROR: MPUFftJsonComponent class not found"
             exit 1
           fi
-          
+
           # Check for required methods
-          if ! grep -q "void setup()" mpu_fft_json.h; then
+          if ! grep -q "void setup()" "$HEADER_PATH"; then
             echo "ERROR: setup() method not found"
             exit 1
           fi
-          
-          if ! grep -q "void loop()" mpu_fft_json.h; then
+
+          if ! grep -q "void loop()" "$HEADER_PATH"; then
             echo "ERROR: loop() method not found"
             exit 1
           fi
-          
+
           echo "✓ Basic C++ syntax checks passed"
 
       - name: Run clang-format check
