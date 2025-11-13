@@ -41,7 +41,10 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
   void set_fft_bands_sensor(sensor::Sensor *s) { fft_bands_sensor_ = s; }
   void set_max_analysis_hz_sensor(sensor::Sensor *s) { max_analysis_hz_sensor_ = s; }
 
-  ~MPUFftJsonComponent() { delete[] vReal_; delete[] vImag_; }
+  ~MPUFftJsonComponent() {
+    delete[] vReal_;
+    delete[] vImag_;
+  }
 
   void setup() override {
     if (!this->write_byte(MPU_PWR_MGMT_1, 0x00)) {
@@ -52,24 +55,54 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
     esphome::delay(100);
 
     // Normalize configuration
-    if (sample_frequency_ < 10.0f) sample_frequency_ = 10.0f;
-    if (sample_frequency_ > 5000.0f) sample_frequency_ = 5000.0f;
-    if (!is_power_of_two(fft_samples_)) fft_samples_ = next_power_of_two(fft_samples_);
-    if (fft_samples_ < MIN_FFT_SIZE) fft_samples_ = MIN_FFT_SIZE;
-    if (fft_samples_ > MAX_FFT_SIZE) fft_samples_ = MAX_FFT_SIZE;
-    if (fft_bands_ == 0) fft_bands_ = 1; if (fft_bands_ > 64) fft_bands_ = 64;
-    if (window_shift_ == 0 || window_shift_ >= fft_samples_) window_shift_ = fft_samples_ / 2; // 50% overlap
+    if (sample_frequency_ < 10.0f) {
+      sample_frequency_ = 10.0f;
+    }
+    if (sample_frequency_ > 5000.0f) {
+      sample_frequency_ = 5000.0f;
+    }
+    if (!is_power_of_two(fft_samples_)) {
+      fft_samples_ = next_power_of_two(fft_samples_);
+    }
+    if (fft_samples_ < MIN_FFT_SIZE) {
+      fft_samples_ = MIN_FFT_SIZE;
+    }
+    if (fft_samples_ > MAX_FFT_SIZE) {
+      fft_samples_ = MAX_FFT_SIZE;
+    }
+    if (fft_bands_ == 0) {
+      fft_bands_ = 1;
+    }
+    if (fft_bands_ > 64) {
+      fft_bands_ = 64;
+    }
+    if (window_shift_ == 0 || window_shift_ >= fft_samples_) {
+      // 50% overlap
+      window_shift_ = fft_samples_ / 2;
+    }
 
     sample_period_us_ = (uint32_t)(1000000.0f / sample_frequency_);
 
     vReal_ = new double[fft_samples_];
     vImag_ = new double[fft_samples_];
-    for (uint16_t i = 0; i < fft_samples_; i++) { vReal_[i] = 0.0; vImag_[i] = 0.0; }
+    for (uint16_t i = 0; i < fft_samples_; i++) {
+      vReal_[i] = 0.0;
+      vImag_[i] = 0.0;
+    }
 
     last_sample_us_ = esphome::micros();
     load_window_start_us_ = last_sample_us_;
-    sample_index_ = 0; dc_avg_ = 1.0f; busy_time_us_ = 0;
-    ESP_LOGI(TAG, "Configured fs=%.1fHz n=%u bands=%u overlap=%u max_hz=%.1f", sample_frequency_, fft_samples_, fft_bands_, window_shift_, max_analysis_hz_);
+    sample_index_ = 0;
+    dc_avg_ = 1.0f;
+    busy_time_us_ = 0;
+    ESP_LOGI(
+        TAG,
+        "Configured fs=%.1fHz n=%u bands=%u overlap=%u max_hz=%.1f",
+        sample_frequency_,
+        fft_samples_,
+        fft_bands_,
+        window_shift_,
+        max_analysis_hz_);
   }
 
   void loop() override {
@@ -98,7 +131,18 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
 protected:
   // Helpers
   static bool is_power_of_two(uint32_t v) { return v && ((v & (v - 1)) == 0); }
-  static uint32_t next_power_of_two(uint32_t v) { if (v == 0) return 1; v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; return v + 1; }
+  static uint32_t next_power_of_two(uint32_t v) {
+    if (v == 0) {
+      return 1;
+    }
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    return v + 1;
+  }
   static constexpr const char *TAG = "MPU_FFT";
   // Sensors
   sensor::Sensor *rms_sensor_{nullptr};
@@ -147,8 +191,12 @@ protected:
   }
 
   void sample_once_() {
-    float ax, ay, az;
-    if (!read_accel_g_(ax, ay, az)) return;
+    float ax;
+    float ay;
+    float az;
+    if (!read_accel_g_(ax, ay, az)) {
+      return;
+    }
 
     float a_total = sqrt(ax * ax + ay * ay + az * az);
     dc_avg_ = dc_avg_ + dc_alpha_ * (a_total - dc_avg_);
@@ -178,9 +226,13 @@ protected:
   void process_window_() {
     // RMS
     double sum_sq = 0.0;
-    for (uint16_t i = 0; i < fft_samples_; i++) sum_sq += vReal_[i] * vReal_[i];
+    for (uint16_t i = 0; i < fft_samples_; i++) {
+      sum_sq += vReal_[i] * vReal_[i];
+    }
     float rms = sqrt(sum_sq / fft_samples_);
-    if (rms_sensor_) rms_sensor_->publish_state(rms);
+    if (rms_sensor_) {
+      rms_sensor_->publish_state(rms);
+    }
 
     // FFT
     ArduinoFFT<double> FFT(vReal_, vImag_, fft_samples_, sample_frequency_);
@@ -197,15 +249,30 @@ protected:
     // Peak
     double max_mag = 0.0;
     uint16_t max_k = 0;
-    for (uint16_t k = 1; k < nyquist; k++) if (vReal_[k] > max_mag) { max_mag = vReal_[k]; max_k = k; }
+    for (uint16_t k = 1; k < nyquist; k++) {
+      if (vReal_[k] > max_mag) {
+        max_mag = vReal_[k];
+        max_k = k;
+      }
+    }
     float peak_freq = max_k * bin_hz;
 
     // Diagnostics
-    if (bin_hz_sensor_) bin_hz_sensor_->publish_state(bin_hz);
-    if (fs_sensor_) fs_sensor_->publish_state(sample_frequency_);
-    if (fft_samples_sensor_) fft_samples_sensor_->publish_state((float)fft_samples_);
-    if (fft_bands_sensor_) fft_bands_sensor_->publish_state((float)fft_bands_);
-    if (max_analysis_hz_sensor_) max_analysis_hz_sensor_->publish_state(f_max);
+    if (bin_hz_sensor_) {
+      bin_hz_sensor_->publish_state(bin_hz);
+    }
+    if (fs_sensor_) {
+      fs_sensor_->publish_state(sample_frequency_);
+    }
+    if (fft_samples_sensor_) {
+      fft_samples_sensor_->publish_state((float)fft_samples_);
+    }
+    if (fft_bands_sensor_) {
+      fft_bands_sensor_->publish_state((float)fft_bands_);
+    }
+    if (max_analysis_hz_sensor_) {
+      max_analysis_hz_sensor_->publish_state(f_max);
+    }
 
     // JSON
     String json = "{";
@@ -215,36 +282,66 @@ protected:
     json += "\"rms\":" + String(rms, 6) + ",";
     json += "\"peak_hz\":" + String(peak_freq, 2) + ",";
     json += "\"max_analysis_hz\":" + String(f_max, 1) + ",";
-    json += "\"bands\":[";
+    json += "\"bands\":[]";  // placeholder replace next block
 
+    // Build bands array
+    String bands = "";
     for (uint8_t b = 0; b < fft_bands_; b++) {
       float f_start = b * band_width;
       float f_end = (b + 1) * band_width;
       uint16_t k_start = (uint16_t)(f_start / bin_hz);
       uint16_t k_end = (uint16_t)(f_end / bin_hz + 0.5f);
-      if (k_start < 1) k_start = 1;
-      if (k_end >= nyquist) k_end = nyquist - 1;
+      if (k_start < 1) {
+        k_start = 1;
+      }
+      if (k_end >= nyquist) {
+        k_end = nyquist - 1;
+      }
       double energy = 0.0;
-      for (uint16_t k = k_start; k <= k_end; k++) energy += vReal_[k] * vReal_[k];
-      if (b > 0) json += ",";
-      json += String(energy, 2);
+      for (uint16_t k = k_start; k <= k_end; k++) {
+        energy += vReal_[k] * vReal_[k];
+      }
+      if (b > 0) {
+        bands += ",";
+      }
+      bands += String(energy, 2);
     }
+    json.replace("\"bands\":[]", "\"bands\":[" + bands + "]");
 
-    json += "],";
+    // band_center
+    String band_center = "";
+    for (uint8_t b = 0; b < fft_bands_; b++) {
+      if (b > 0) {
+        band_center += ",";
+      }
+      band_center += String((b + 0.5f) * band_width, 1);
+    }
+    json += ",\"band_center\":[" + band_center + "]";
 
-    json += "\"band_center\":[";
-    for (uint8_t b = 0; b < fft_bands_; b++) { if (b > 0) json += ","; json += String((b + 0.5f) * band_width, 1); }
-    json += "],";
+    // band_low
+    String band_low = "";
+    for (uint8_t b = 0; b < fft_bands_; b++) {
+      if (b > 0) {
+        band_low += ",";
+      }
+      band_low += String(b * band_width, 1);
+    }
+    json += ",\"band_low\":[" + band_low + "]";
 
-    json += "\"band_low\":[";
-    for (uint8_t b = 0; b < fft_bands_; b++) { if (b > 0) json += ","; json += String(b * band_width, 1); }
-    json += "],";
+    // band_high
+    String band_high = "";
+    for (uint8_t b = 0; b < fft_bands_; b++) {
+      if (b > 0) {
+        band_high += ",";
+      }
+      band_high += String((b + 1) * band_width, 1);
+    }
+    json += ",\"band_high\":[" + band_high + "]";
+    json += "}";
 
-    json += "\"band_high\":[";
-    for (uint8_t b = 0; b < fft_bands_; b++) { if (b > 0) json += ","; json += String((b + 1) * band_width, 1); }
-    json += "]}";
-
-    if (spectrum_text_) spectrum_text_->publish_state(json.c_str());
+    if (spectrum_text_) {
+      spectrum_text_->publish_state(json.c_str());
+    }
   }
 };
 
