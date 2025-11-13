@@ -1,8 +1,8 @@
 # ESP32 Vibration FFT Analyzer
 
 <!-- VERSION:START -->
-Latest Release: unreleased
-Tested with ESPHome: latest
+Latest Release: v0.0.1 (2025-11-13)
+Tested with ESPHome: Version: 2025.10.5
 <!-- VERSION:END -->
 
 [![ESPHome CI/CD](https://github.com/MomoRC-tech/Body-sound-sensor--ESP32--ESPhome--FFT-/actions/workflows/esphome-ci.yml/badge.svg)](https://github.com/MomoRC-tech/Body-sound-sensor--ESP32--ESPhome--FFT-/actions/workflows/esphome-ci.yml)
