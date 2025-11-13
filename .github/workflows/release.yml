@@ -246,7 +246,6 @@ jobs:
           prerelease: false
           files: |
             body_sound_sensor.yaml
-            mpu_fft_json.h
             custom_components/mpu_fft_json/mpu_fft_json.h
             secrets.yaml.example
             README.md
