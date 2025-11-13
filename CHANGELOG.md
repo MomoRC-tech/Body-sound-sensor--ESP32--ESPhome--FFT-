@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.5 - 2025-11-13
+
+- chore(release): prepare v0.9.4 changelog and README version bump
+
+
 ## v0.9.4 - 2025-11-13
 
 - feat(json): add timing metadata (ts_ms, win_ms, hop_ms, seq, epoch_ms) for ML alignment and event correlation
