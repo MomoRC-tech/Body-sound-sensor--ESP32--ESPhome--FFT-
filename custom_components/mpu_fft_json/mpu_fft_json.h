@@ -13,6 +13,8 @@ static const uint32_t LOAD_WINDOW_US_DEFAULT = 1000000;  // 1s
 static const uint8_t MPU_PWR_MGMT_1 = 0x6B;
 static const uint8_t MPU_ACCEL_XOUT_H = 0x3B;
 static const float ACCEL_SCALE = 1.0f / 16384.0f;  // g per LSB (±2g)
+static const uint16_t MIN_FFT_SIZE = 64;           // minimum FFT length
+static const uint16_t MAX_FFT_SIZE = 4096;         // safety upper bound
 
 namespace mpu_fft_json {
 
@@ -39,31 +41,35 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
   void set_fft_bands_sensor(sensor::Sensor *s) { fft_bands_sensor_ = s; }
   void set_max_analysis_hz_sensor(sensor::Sensor *s) { max_analysis_hz_sensor_ = s; }
 
+  ~MPUFftJsonComponent() override { delete[] vReal_; delete[] vImag_; }
+
   void setup() override {
-    // Wake up MPU6050
     if (!this->write_byte(MPU_PWR_MGMT_1, 0x00)) {
-      ESP_LOGE("MPU_FFT", "MPU6050 wake-up failed");
+      ESP_LOGE(TAG, "MPU6050 wake-up failed");
       this->mark_failed();
       return;
     }
-
     esphome::delay(100);
 
-    if (fft_samples_ < 64) fft_samples_ = 64;
+    // Normalize configuration
+    if (sample_frequency_ < 10.0f) sample_frequency_ = 10.0f;
+    if (sample_frequency_ > 5000.0f) sample_frequency_ = 5000.0f;
+    if (!is_power_of_two(fft_samples_)) fft_samples_ = next_power_of_two(fft_samples_);
+    if (fft_samples_ < MIN_FFT_SIZE) fft_samples_ = MIN_FFT_SIZE;
+    if (fft_samples_ > MAX_FFT_SIZE) fft_samples_ = MAX_FFT_SIZE;
+    if (fft_bands_ == 0) fft_bands_ = 1; if (fft_bands_ > 64) fft_bands_ = 64;
+    if (window_shift_ == 0 || window_shift_ >= fft_samples_) window_shift_ = fft_samples_ / 2; // 50% overlap
+
     sample_period_us_ = (uint32_t)(1000000.0f / sample_frequency_);
 
     vReal_ = new double[fft_samples_];
     vImag_ = new double[fft_samples_];
-    for (uint16_t i = 0; i < fft_samples_; i++) {
-      vReal_[i] = 0.0;
-      vImag_[i] = 0.0;
-    }
+    for (uint16_t i = 0; i < fft_samples_; i++) { vReal_[i] = 0.0; vImag_[i] = 0.0; }
 
-    last_sample_us_ = esphome::micros();
+    last_sample_us_ = micros();
     load_window_start_us_ = last_sample_us_;
-    sample_index_ = 0;
-    dc_avg_ = 1.0f;
-    busy_time_us_ = 0;
+    sample_index_ = 0; dc_avg_ = 1.0f; busy_time_us_ = 0;
+    ESP_LOGI(TAG, "Configured fs=%.1fHz n=%u bands=%u overlap=%u max_hz=%.1f", sample_frequency_, fft_samples_, fft_bands_, window_shift_, max_analysis_hz_);
   }
 
   void loop() override {
@@ -89,7 +95,11 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
     busy_time_us_ += (loop_end - loop_start);
   }
 
- protected:
+protected:
+  // Helpers
+  static bool is_power_of_two(uint32_t v) { return v && ((v & (v - 1)) == 0); }
+  static uint32_t next_power_of_two(uint32_t v) { if (v == 0) return 1; v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; return v + 1; }
+  static constexpr const char *TAG = "MPU_FFT";
   // Sensors
   sensor::Sensor *rms_sensor_{nullptr};
   sensor::Sensor *cpu_load_sensor_{nullptr};
