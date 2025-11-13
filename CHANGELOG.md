@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.4 - 2025-11-13
+
+- feat: add timing metadata (ts_ms, win_ms, hop_ms, seq, epoch_ms), expose window_shift diag; Python time-series plot helper; update agent docs
+- chore(release): update CHANGELOG and README for v0.9.3
+
+
 ## v0.9.3 - 2025-11-13
 
 
