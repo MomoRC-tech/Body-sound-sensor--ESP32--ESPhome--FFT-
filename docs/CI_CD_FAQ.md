@@ -192,19 +192,19 @@ Result: Code pushed, tests run, no version tag
 "Push my code for testing"
 ```
 
-### Option 2: Use release.ps1 Script
+### Option 2: Use scripts/release.ps1 Script
 ```powershell
 # Patch release (0.1.0 → 0.1.1)
-.\release.ps1 -VersionBump patch
+.\scripts\release.ps1 -VersionBump patch
 
 # Minor release (0.1.5 → 0.2.0)
-.\release.ps1 -VersionBump minor
+.\scripts\release.ps1 -VersionBump minor
 
 # Major release (0.2.3 → 1.0.0)
-.\release.ps1 -VersionBump major
+.\scripts\release.ps1 -VersionBump major
 
 # With notes
-.\release.ps1 -VersionBump patch -ReleaseNotes "Fixed bug #123"
+.\scripts\release.ps1 -VersionBump patch -ReleaseNotes "Fixed bug #123"
 ```
 
 ### Option 3: GitHub Actions Web UI
@@ -269,7 +269,7 @@ Result: Code pushed, tests run, no version tag
 
 | Requirement | Status | How |
 |-------------|--------|-----|
-| Push and release on request | ✅ Yes | Via Copilot or `release.ps1` |
+| Push and release on request | ✅ Yes | Via Copilot or `scripts/release.ps1` |
 | Create release tags | ✅ Yes | Automatic versioning |
 | Publish GitHub releases | ✅ Yes | With firmware + notes |
 | Test before push | ✅ Yes | Validation + Python tests |

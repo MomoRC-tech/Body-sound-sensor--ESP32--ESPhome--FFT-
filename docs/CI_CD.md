@@ -69,7 +69,7 @@ Creates versioned releases with full testing and artifact publishing.
 
 **Trigger:**
 - Manual via GitHub Actions UI
-- Or via `release.ps1` script (recommended)
+ - Or via `scripts/release.ps1` script (recommended)
 
 **Inputs:**
 - `version_bump`: Choose `patch`, `minor`, or `major`
@@ -85,16 +85,16 @@ Creates versioned releases with full testing and artifact publishing.
 
 ```powershell
 # Release a patch version (e.g., v0.1.0 → v0.1.1)
-.\release.ps1 -VersionBump patch
+.\scripts\release.ps1 -VersionBump patch
 
 # Release a minor version (e.g., v0.1.5 → v0.2.0)
-.\release.ps1 -VersionBump minor
+.\scripts\release.ps1 -VersionBump minor
 
 # Release a major version (e.g., v0.2.3 → v1.0.0)
-.\release.ps1 -VersionBump major
+.\scripts\release.ps1 -VersionBump major
 
 # Add custom release notes
-.\release.ps1 -VersionBump patch -ReleaseNotes "Fixed CPU load calculation bug"
+.\scripts\release.ps1 -VersionBump patch -ReleaseNotes "Fixed CPU load calculation bug"
 ```
 
 **What the script does:**
@@ -443,7 +443,7 @@ Potential CI/CD improvements:
 
 **Use Script:**
 ```powershell
-.\release.ps1 -VersionBump patch
+.\scripts\release.ps1 -VersionBump patch
 ```
 
 **Or Ask Copilot:**

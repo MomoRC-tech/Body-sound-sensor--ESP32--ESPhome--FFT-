@@ -38,7 +38,7 @@
 ## 📋 Phase 3: Software Configuration
 
 ### Tasks
-- [ ] Run `.\setup.ps1` OR manually create secrets.yaml
+- [ ] Run `.\scripts\setup.ps1` OR manually create secrets.yaml
 - [ ] Generate API encryption key
 - [ ] Edit secrets.yaml with:
   - [ ] WiFi password for MOMOWLAN
@@ -329,4 +329,4 @@ binary_sensor:
 
 **Next Action**: Proceed to Phase 2 (Hardware Assembly)
 
-**Need Help?** Run `.\setup.ps1` to begin automated setup!
+**Need Help?** Run `.\scripts\setup.ps1` to begin automated setup!

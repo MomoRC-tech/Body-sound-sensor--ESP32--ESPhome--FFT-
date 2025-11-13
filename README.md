@@ -153,8 +153,9 @@ The following parameters can be tuned in `mpu_fft_json.h`:
 │       ├── text_sensor.py       # ESPHome codegen text sensors
 │       └── mpu_fft_json.h       # C++ custom component (FFT processing)
 ├── secrets.yaml.example         # Template for WiFi/API credentials
-├── setup.ps1                    # Automated setup script
-├── release.ps1                  # Release helper script
+├── scripts/
+│   ├── setup.ps1                # Automated setup script
+│   └── release.ps1              # Release helper script
 ├── .github/
 │   └── workflows/
 │       ├── esphome-ci.yml       # CI/CD: validate, compile, test
@@ -221,13 +222,13 @@ To create a release, use the helper script:
 
 ```powershell
 # Patch release (bug fixes)
-.\release.ps1 -VersionBump patch
+.\scripts\release.ps1 -VersionBump patch
 
 # Minor release (new features)
-.\release.ps1 -VersionBump minor
+.\scripts\release.ps1 -VersionBump minor
 
 # Major release (breaking changes)
-.\release.ps1 -VersionBump major
+.\scripts\release.ps1 -VersionBump major
 ```
 
 Or simply ask GitHub Copilot: _"Push and release a patch version"_

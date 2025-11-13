@@ -16,7 +16,7 @@
 Run the setup script in PowerShell:
 
 ```powershell
-.\setup.ps1
+.\scripts\setup.ps1
 ```
 
 This will:
@@ -228,4 +228,4 @@ Once installed and working:
 
 ---
 
-**Ready to start?** Run `.\setup.ps1` now! 🚀
+**Ready to start?** Run `.\scripts\setup.ps1` now! 🚀
