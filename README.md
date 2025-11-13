@@ -171,10 +171,10 @@ The following parameters can be tuned in `mpu_fft_json.h`:
 
 ## Documentation
 
-- Hardware: `docs/HARDWARE.md`
-- Setup: `docs/SETUP.md`
-- CI/CD: `docs/CI_CD.md`
-- CI/CD FAQ: `docs/CI_CD_FAQ.md`
+- Hardware: [docs/HARDWARE.md](docs/HARDWARE.md)
+- Setup: [docs/SETUP.md](docs/SETUP.md)
+- CI/CD: [docs/CI_CD.md](docs/CI_CD.md)
+- CI/CD FAQ: [docs/CI_CD_FAQ.md](docs/CI_CD_FAQ.md)
 
 ## Troubleshooting
 
