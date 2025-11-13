@@ -2,11 +2,18 @@
 
 ## v0.9.4 - 2025-11-13
 
-- feat: add timing metadata (ts_ms, win_ms, hop_ms, seq, epoch_ms), expose window_shift diag; Python time-series plot helper; update agent docs
-- chore(release): update CHANGELOG and README for v0.9.3
-
+- feat(json): add timing metadata (ts_ms, win_ms, hop_ms, seq, epoch_ms) for ML alignment and event correlation
+- feat(diagnostics): expose window_shift as diagnostic sensor (samples) for overlap visibility
+- feat(python): time-series plot helper (plot_band_over_time) + accumulation demo in analyze_spectrum.py
+- docs: update README JSON example & add Timing Metadata section; add AI agent instructions file
+- internal: optional SNTP time integration (time_id) to enable epoch_ms without breaking existing parsers
 
 ## v0.9.3 - 2025-11-13
+
+- feat(json): add timing metadata fields `ts_ms`, `win_ms`, `hop_ms`, `seq`, and optional `epoch_ms` to spectrum JSON for ML alignment and historical correlation
+- feat(diagnostics): expose `window_shift` as diagnostic sensor (samples)
+- feat(python): add time-series plot helper and accumulation demo for band energy vs time
+- docs: update README with new JSON example and Timing Metadata section; add agent instructions file
 
 
 

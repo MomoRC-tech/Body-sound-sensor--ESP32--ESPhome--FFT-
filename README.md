@@ -135,6 +135,11 @@ Basic hardware requirements are:
   "rms": 0.012345,
   "peak_hz": 49.2,
    "max_analysis_hz": 300.0,
+   "ts_ms": 12345678,
+   "win_ms": 512.0,
+   "hop_ms": 256.0,
+   "seq": 42,
+   "epoch_ms": 1731492345123,
    "bands":       [12.5, 8.3, 15.7, 22.1, 18.9, 11.2, 9.4, 7.8, 6.5, 5.2, 4.1, 3.3, 2.8, 2.1, 1.5, 1.2],
    "band_center": [ 9.4, 28.1, 46.9, 65.6, 84.4,103.1,121.9,140.6,159.4,178.1,196.9,215.6,234.4,253.1,271.9,290.6],
    "band_low":    [ 0.0, 18.8, 37.5, 56.3, 75.0, 93.8,112.5,131.3,150.0,168.8,187.5,206.3,225.0,243.8,262.5,281.3],
@@ -152,6 +157,25 @@ Basic hardware requirements are:
 - `max_analysis_hz`: Upper bound of analyzed spectrum used to build bands
 - `band_center`: Center frequency (Hz) of each band
 - `band_low` / `band_high`: Low/high edges (Hz) of each band
+- `ts_ms`: Monotonic timestamp (ms since boot) at window center
+- `win_ms`: Window length in milliseconds
+- `hop_ms`: Hop size (advance between successive window centers) in ms
+- `seq`: Incrementing window index (starts at 0)
+- `epoch_ms`: Wall-clock Unix time (ms) when ESPHome time sync is available; else omitted
+
+### Timing Metadata
+
+The component publishes both monotonic and wall-clock timing for ML and historical correlation:
+
+| Field | Source | Purpose |
+|-------|--------|---------|
+| `ts_ms` | `millis()` mapped to window center | Stable sequencing independent of NTP |
+| `seq` | Internal counter | Detect gaps / missing windows |
+| `win_ms` | Derived from `n / fs` | Reconstruct exact analysis window length |
+| `hop_ms` | Derived from overlap (`window_shift`) | Determine update cadence & effective FPS |
+| `epoch_ms` | SNTP time + monotonic offset | Align spectra to real-world events; only present after time sync |
+
+If `epoch_ms` is still `0` or missing early after boot, rely on `ts_ms` + `seq`. Once time sync completes, `epoch_ms` will appear automatically with no configuration changes beyond adding a `time:` block in YAML.
 
 #### Diagnostic Entities (optional)
 
