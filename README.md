@@ -168,6 +168,17 @@ The following parameters can be tuned in `mpu_fft_json.h`:
 | `DC_ALPHA`          | 0.01      | High-pass filter coefficient                |
 | `LOAD_WINDOW_US`    | 1,000,000 | CPU load averaging window (µs)              |
 
+Component options (YAML):
+
+- `max_analysis_hz` (default `300.0`): Cap the analyzed spectrum when computing band energies and frequency metadata. Omit or set to `0` to use the full Nyquist (`fs/2`). Example:
+
+```yaml
+mpu_fft_json:
+   id: mpu_fft
+   address: 0x68
+   max_analysis_hz: 300.0
+```
+
 **Performance Considerations:**
 
 - Lower `SAMPLE_FREQUENCY` → Less CPU load, lower Nyquist frequency

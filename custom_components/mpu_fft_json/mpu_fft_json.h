@@ -18,8 +18,6 @@ static const uint32_t SAMPLE_PERIOD_US  = (uint32_t)(1000000.0f / SAMPLE_FREQUEN
 // FFT configuration
 static const uint8_t  FFT_BANDS         = 16;          // Number of frequency bands
 static const uint16_t WINDOW_SHIFT      = FFT_SAMPLES / 2;  // 50% overlap
-// Optional: limit analysis to a maximum frequency (Hz). Set to SAMPLE_FREQUENCY/2 for full range.
-static const float    MAX_ANALYSIS_HZ   = 300.0f;      // e.g., analyze up to 300 Hz
 
 // High-pass filter coefficient for DC removal
 static const float    DC_ALPHA          = 0.01f;
@@ -46,6 +44,7 @@ public:
   void set_rms_sensor(sensor::Sensor *sensor) { rms_sensor_ = sensor; }
   void set_cpu_load_sensor(sensor::Sensor *sensor) { cpu_load_sensor_ = sensor; }
   void set_spectrum_text_sensor(text_sensor::TextSensor *sensor) { spectrum_text_ = sensor; }
+  void set_max_analysis_hz(float hz) { max_analysis_hz_ = hz; }
 
   MPUFftJsonComponent() = default;
 
@@ -129,6 +128,9 @@ protected:
   // CPU load tracking
   uint32_t load_window_start_us_ = 0;
   uint32_t busy_time_us_ = 0;
+
+  // Configurable top analysis frequency (defaults to 300 Hz; clamped to Nyquist at runtime)
+  float max_analysis_hz_ = 300.0f;
 
   // ========================================================================
   // Read accelerometer data in g units
@@ -221,8 +223,8 @@ protected:
     float bin_hz = SAMPLE_FREQUENCY / FFT_SAMPLES;
     float f_nyquist = SAMPLE_FREQUENCY / 2.0f;
     float f_max = f_nyquist;
-    if (MAX_ANALYSIS_HZ > 0.0f && MAX_ANALYSIS_HZ < f_nyquist) {
-      f_max = MAX_ANALYSIS_HZ;
+    if (max_analysis_hz_ > 0.0f && max_analysis_hz_ < f_nyquist) {
+      f_max = max_analysis_hz_;
     }
     float band_width = f_max / FFT_BANDS;
     uint16_t nyquist = FFT_SAMPLES / 2;
