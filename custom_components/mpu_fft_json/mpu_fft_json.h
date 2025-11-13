@@ -41,7 +41,7 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
   void set_fft_bands_sensor(sensor::Sensor *s) { fft_bands_sensor_ = s; }
   void set_max_analysis_hz_sensor(sensor::Sensor *s) { max_analysis_hz_sensor_ = s; }
 
-  ~MPUFftJsonComponent() override { delete[] vReal_; delete[] vImag_; }
+  ~MPUFftJsonComponent() { delete[] vReal_; delete[] vImag_; }
 
   void setup() override {
     if (!this->write_byte(MPU_PWR_MGMT_1, 0x00)) {
@@ -66,7 +66,7 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
     vImag_ = new double[fft_samples_];
     for (uint16_t i = 0; i < fft_samples_; i++) { vReal_[i] = 0.0; vImag_[i] = 0.0; }
 
-    last_sample_us_ = micros();
+    last_sample_us_ = esphome::micros();
     load_window_start_us_ = last_sample_us_;
     sample_index_ = 0; dc_avg_ = 1.0f; busy_time_us_ = 0;
     ESP_LOGI(TAG, "Configured fs=%.1fHz n=%u bands=%u overlap=%u max_hz=%.1f", sample_frequency_, fft_samples_, fft_bands_, window_shift_, max_analysis_hz_);
