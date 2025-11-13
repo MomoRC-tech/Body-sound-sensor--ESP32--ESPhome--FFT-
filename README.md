@@ -134,7 +134,11 @@ Basic hardware requirements are:
   "bin_hz": 1.953,
   "rms": 0.012345,
   "peak_hz": 49.2,
-  "bands": [12.5, 8.3, 15.7, 22.1, 18.9, 11.2, 9.4, 7.8, 6.5, 5.2, 4.1, 3.3, 2.8, 2.1, 1.5, 1.2]
+   "max_analysis_hz": 300.0,
+   "bands":       [12.5, 8.3, 15.7, 22.1, 18.9, 11.2, 9.4, 7.8, 6.5, 5.2, 4.1, 3.3, 2.8, 2.1, 1.5, 1.2],
+   "band_center": [ 9.4, 28.1, 46.9, 65.6, 84.4,103.1,121.9,140.6,159.4,178.1,196.9,215.6,234.4,253.1,271.9,290.6],
+   "band_low":    [ 0.0, 18.8, 37.5, 56.3, 75.0, 93.8,112.5,131.3,150.0,168.8,187.5,206.3,225.0,243.8,262.5,281.3],
+   "band_high":   [18.8, 37.5, 56.3, 75.0, 93.8,112.5,131.3,150.0,168.8,187.5,206.3,225.0,243.8,262.5,281.3,300.0]
 }
 ```
 
@@ -145,6 +149,9 @@ Basic hardware requirements are:
 - `rms`: Time-domain RMS vibration (g)
 - `peak_hz`: Dominant frequency (Hz)
 - `bands`: Array of 16 band energies (arbitrary units)
+- `max_analysis_hz`: Upper bound of analyzed spectrum used to build bands
+- `band_center`: Center frequency (Hz) of each band
+- `band_low` / `band_high`: Low/high edges (Hz) of each band
 
 </details>
 
@@ -295,13 +302,16 @@ To create a release, use the helper script:
 
 ```powershell
 # Patch release (bug fixes)
-.\scriptselease.ps1 -VersionBump patch
+.\scripts
+elease.ps1 -VersionBump patch
 
 # Minor release (new features)
-.\scriptselease.ps1 -VersionBump minor
+.\scripts
+elease.ps1 -VersionBump minor
 
 # Major release (breaking changes)
-.\scriptselease.ps1 -VersionBump major
+.\scripts
+elease.ps1 -VersionBump major
 ```
 
 Or simply ask GitHub Copilot: _"Push and release a patch version"_

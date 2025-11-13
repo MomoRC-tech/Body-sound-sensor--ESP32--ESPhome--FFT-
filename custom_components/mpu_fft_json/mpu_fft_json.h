@@ -18,6 +18,8 @@ static const uint32_t SAMPLE_PERIOD_US  = (uint32_t)(1000000.0f / SAMPLE_FREQUEN
 // FFT configuration
 static const uint8_t  FFT_BANDS         = 16;          // Number of frequency bands
 static const uint16_t WINDOW_SHIFT      = FFT_SAMPLES / 2;  // 50% overlap
+// Optional: limit analysis to a maximum frequency (Hz). Set to SAMPLE_FREQUENCY/2 for full range.
+static const float    MAX_ANALYSIS_HZ   = 300.0f;      // e.g., analyze up to 300 Hz
 
 // High-pass filter coefficient for DC removal
 static const float    DC_ALPHA          = 0.01f;
@@ -217,7 +219,11 @@ protected:
     // 3. Compute band energies
     float bands[FFT_BANDS];
     float bin_hz = SAMPLE_FREQUENCY / FFT_SAMPLES;
-    float f_max = SAMPLE_FREQUENCY / 2.0f;
+    float f_nyquist = SAMPLE_FREQUENCY / 2.0f;
+    float f_max = f_nyquist;
+    if (MAX_ANALYSIS_HZ > 0.0f && MAX_ANALYSIS_HZ < f_nyquist) {
+      f_max = MAX_ANALYSIS_HZ;
+    }
     float band_width = f_max / FFT_BANDS;
     uint16_t nyquist = FFT_SAMPLES / 2;
 
@@ -258,6 +264,7 @@ protected:
     json += "\"bin_hz\":" + String(bin_hz, 3) + ",";
     json += "\"rms\":" + String(rms, 6) + ",";
     json += "\"peak_hz\":" + String(peak_freq, 2) + ",";
+    json += "\"max_analysis_hz\":" + String(f_max, 1) + ",";
     json += "\"bands\":[";
 
     for (uint8_t b = 0; b < FFT_BANDS; b++) {
@@ -265,6 +272,31 @@ protected:
       json += String(bands[b], 2);
     }
 
+    json += "],";
+
+    // Add band center/low/high frequency arrays for clarity
+    json += "\"band_center\":[";
+    for (uint8_t b = 0; b < FFT_BANDS; b++) {
+      if (b > 0) json += ",";
+      float f_center = (b + 0.5f) * band_width;
+      json += String(f_center, 1);
+    }
+    json += "],";
+
+    json += "\"band_low\":[";
+    for (uint8_t b = 0; b < FFT_BANDS; b++) {
+      if (b > 0) json += ",";
+      float f_low = b * band_width;
+      json += String(f_low, 1);
+    }
+    json += "],";
+
+    json += "\"band_high\":[";
+    for (uint8_t b = 0; b < FFT_BANDS; b++) {
+      if (b > 0) json += ",";
+      float f_high = (b + 1) * band_width;
+      json += String(f_high, 1);
+    }
     json += "]}";
 
     // Publish JSON spectrum

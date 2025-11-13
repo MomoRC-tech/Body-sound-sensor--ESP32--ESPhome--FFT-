@@ -21,7 +21,11 @@ example_json = '''
   "bin_hz": 1.953,
   "rms": 0.012345,
   "peak_hz": 49.2,
-  "bands": [12.5, 8.3, 15.7, 22.1, 18.9, 11.2, 9.4, 7.8, 6.5, 5.2, 4.1, 3.3, 2.8, 2.1, 1.5, 1.2]
+    "max_analysis_hz": 300.0,
+    "bands": [12.5, 8.3, 15.7, 22.1, 18.9, 11.2, 9.4, 7.8, 6.5, 5.2, 4.1, 3.3, 2.8, 2.1, 1.5, 1.2],
+    "band_center": [9.4, 28.1, 46.9, 65.6, 84.4, 103.1, 121.9, 140.6, 159.4, 178.1, 196.9, 215.6, 234.4, 253.1, 271.9, 290.6],
+    "band_low":    [0.0, 18.8, 37.5, 56.3, 75.0, 93.8, 112.5, 131.3, 150.0, 168.8, 187.5, 206.3, 225.0, 243.8, 262.5, 281.3],
+    "band_high":   [18.8, 37.5, 56.3, 75.0, 93.8, 112.5, 131.3, 150.0, 168.8, 187.5, 206.3, 225.0, 243.8, 262.5, 281.3, 300.0]
 }
 '''
 
@@ -36,12 +40,19 @@ def parse_spectrum(json_str):
         return None
 
 
-def compute_band_frequencies(fs, n_bands):
-    """Compute center frequencies for each band."""
-    f_max = fs / 2.0  # Nyquist frequency
-    band_width = f_max / n_bands
-    frequencies = [(i + 0.5) * band_width for i in range(n_bands)]
-    return frequencies
+def compute_band_frequencies(fs, n_bands, max_analysis_hz=None):
+    """Compute center/low/high frequencies for each band.
+
+    If max_analysis_hz is provided, use it as the top frequency; otherwise use Nyquist.
+    Returns (centers, lows, highs).
+    """
+    f_nyquist = fs / 2.0
+    f_top = min(max_analysis_hz, f_nyquist) if max_analysis_hz else f_nyquist
+    band_width = f_top / n_bands
+    centers = [(i + 0.5) * band_width for i in range(n_bands)]
+    lows = [i * band_width for i in range(n_bands)]
+    highs = [(i + 1) * band_width for i in range(n_bands)]
+    return centers, lows, highs
 
 
 def visualize_spectrum(spectrum_data):
@@ -50,14 +61,19 @@ def visualize_spectrum(spectrum_data):
     fs = spectrum_data['fs']
     n_bands = len(bands)
     
-    # Compute center frequencies for each band
-    frequencies = compute_band_frequencies(fs, n_bands)
+    # Prefer device-provided frequency metadata if present
+    if 'band_center' in spectrum_data and 'band_low' in spectrum_data and 'band_high' in spectrum_data:
+        centers = spectrum_data['band_center']
+        lows = spectrum_data['band_low']
+        highs = spectrum_data['band_high']
+    else:
+        centers, lows, highs = compute_band_frequencies(fs, n_bands, spectrum_data.get('max_analysis_hz'))
     
     # Create figure
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
     
     # Plot 1: Band energies
-    ax1.bar(frequencies, bands, width=frequencies[1]-frequencies[0], 
+    ax1.bar(centers, bands, width=(highs[0]-lows[0]) if n_bands>0 else 1.0, 
             edgecolor='black', alpha=0.7)
     ax1.set_xlabel('Frequency (Hz)')
     ax1.set_ylabel('Energy (arbitrary units)')
@@ -66,7 +82,7 @@ def visualize_spectrum(spectrum_data):
     
     # Plot 2: Band energies in dB scale (log)
     bands_db = 10 * np.log10(np.array(bands) + 1e-10)  # Avoid log(0)
-    ax2.bar(frequencies, bands_db, width=frequencies[1]-frequencies[0], 
+    ax2.bar(centers, bands_db, width=(highs[0]-lows[0]) if n_bands>0 else 1.0, 
             edgecolor='black', alpha=0.7, color='orange')
     ax2.set_xlabel('Frequency (Hz)')
     ax2.set_ylabel('Energy (dB)')
@@ -251,6 +267,8 @@ def main():
         print(f"  RMS vibration: {spectrum_data['rms']:.6f} g")
         print(f"  Peak frequency: {spectrum_data['peak_hz']:.2f} Hz")
         print(f"  Number of bands: {len(spectrum_data['bands'])}")
+        if 'max_analysis_hz' in spectrum_data:
+            print(f"  Max analysis frequency: {spectrum_data['max_analysis_hz']} Hz")
         print()
         
         # Classify device
