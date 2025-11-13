@@ -118,6 +118,20 @@
     "libs": [],
     "x": 690,
     "y": 120,
+    "wires": [["fn-derived2"]]
+  },
+  {
+    "id": "fn-derived2",
+    "z": "a1b2c3d4e5f6g7h8",
+    "name": "Derived features (max & centroid)",
+    "func": "// Compute max band energy and spectral centroid from existing fields\n// Assumptions: fields contain band_0..band_N and max_analysis_hz.\n// Centroid approximation: sum(f_i * E_i) / sum(E_i) where f_i = (i + 0.5) * (max_analysis_hz / bandCount).\nif (!Array.isArray(msg.payload) || !msg.payload[0] || !msg.payload[0].fields) { return null; }\nconst rec = msg.payload[0];\nconst fields = rec.fields;\nconst bandKeys = Object.keys(fields).filter(k => /^band_\\d+$/.test(k));\nif (bandKeys.length === 0) { return msg; }\nconst energies = bandKeys.map(k => Number(fields[k]));\nlet maxEnergy = -Infinity;\nlet maxIndex = -1;\nenergies.forEach((e,i)=>{ if (e > maxEnergy) { maxEnergy = e; maxIndex = i; } });\nconst bandCount = energies.length;\nconst maxHz = Number(fields.max_analysis_hz || 0);\nlet sumE = 0;\nlet weighted = 0;\nfor (let i=0;i<bandCount;i++){ const e = energies[i]; sumE += e; const fCenter = (i + 0.5) * (maxHz / bandCount); weighted += fCenter * e; }\nfields.max_band_energy = maxEnergy;\nfields.max_band_index = maxIndex;\nfields.spectral_centroid_hz = sumE > 0 ? (weighted / sumE) : 0;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 900,
+    "y": 180,
     "wires": [["influx-out"]]
   },
   {
