@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.2 - 2025-11-13
+
+- fix: restore MPUFftJsonComponent structure and namespace; clean JSON/diagnostics and FFT processing
+- docs(diagnostics): document diagnostic sensors and YAML tuning; fix default max_analysis_hz=300Hz
+- feat(diagnostics): expose bin_hz, sample_frequency, fft_samples, fft_bands, max_analysis_hz as diagnostic sensors; fix process_window_ integrity
+- feat(config): make sample_frequency, fft_samples, fft_bands, window_shift, dc_alpha, load_window_us configurable via YAML; dynamic FFT buffers
+- feat(mpu_fft_json): make max_analysis_hz configurable via YAML; docs and example updated
+- feat: include band_low/high/center and max_analysis_hz in spectrum JSON; update example and docs
+- docs: update README
+
+
 ## v0.9.1 - 2025-11-13
 
 - chore: remove root PowerShell scripts (moved to scripts/)
