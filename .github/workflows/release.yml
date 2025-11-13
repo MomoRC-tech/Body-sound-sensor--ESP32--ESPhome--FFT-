@@ -38,10 +38,11 @@ jobs:
 
       - name: Create secrets file for testing
         run: |
-          cat > secrets.yaml << 'EOF'
+          KEY=$(python -c "import os,base64; print(base64.b64encode(os.urandom(32)).decode())")
+          cat > secrets.yaml << EOF
           wifi_ssid: "MOMOWLAN"
           wifi_password: "TestPassword123"
-          api_encryption_key: "dGVzdGtleTE2Ynl0ZXNsb25nZXJ0aGFuMzI="
+          api_encryption_key: "$KEY"
           ota_password: "testpassword"
           EOF
 
