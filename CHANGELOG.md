@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.6 - 2025-11-13
+
+- docs: refresh AI coding agent guide (`.github/copilot-instructions.md`) for concise, actionable repo-specific instructions
+- docs(readme): unify all collapsible summaries with blue, bold styling for better UI visibility
+
 ## v0.9.5 - 2025-11-13
 
 - chore(release): prepare v0.9.4 changelog and README version bump
