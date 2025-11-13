@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.1 - 2025-11-13
+
+- chore: remove root PowerShell scripts (moved to scripts/)
+- chore: move PowerShell scripts to scripts/; remove release/compile artifacts; update docs and .gitignore
+- chore: remove duplicate root mpu_fft_json.h; keep canonical file under custom_components/mpu_fft_json/
+- chore(release): update CHANGELOG and README for v0.9.0
+- ci(release): skip tag creation when tag already exists
+- chore(release): update CHANGELOG and README for v0.9.0
+- chore(docs): generalize sensor names from Brunnen to Body Sound across docs and examples
+
+
 ## v0.9.0 - 2025-11-13
 
 - ci(release): skip tag creation when tag already exists
