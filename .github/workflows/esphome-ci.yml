@@ -230,11 +230,13 @@ jobs:
           assert features['rms'] == 0.012345, 'Wrong RMS value'
           print('✓ Feature extraction test passed')
           
-          # Test band frequency calculation
-          freqs = compute_band_frequencies(1000.0, 16)
-          assert len(freqs) == 16, 'Wrong number of frequencies'
-          assert freqs[0] > 0, 'First frequency should be positive'
-          assert freqs[-1] < 500, 'Last frequency should be < Nyquist'
+          # Test band frequency calculation (function returns centers, lows, highs)
+          result = compute_band_frequencies(1000.0, 16)
+          assert len(result) == 3, 'Should return tuple of 3 lists'
+          centers, lows, highs = result
+          assert len(centers) == 16, 'Wrong number of frequencies'
+          assert centers[0] > 0, 'First center frequency should be positive'
+          assert centers[-1] < 500, 'Last center should be < Nyquist'
           print('✓ Band frequency calculation test passed')
           
           # Test classification
