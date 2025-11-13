@@ -6,6 +6,7 @@ Tested with ESPHome: Version: 2025.10.5
 <!-- VERSION:END -->
 
 [![ESPHome CI/CD](https://github.com/MomoRC-tech/Body-sound-sensor--ESP32--ESPhome--FFT-/actions/workflows/esphome-ci.yml/badge.svg)](https://github.com/MomoRC-tech/Body-sound-sensor--ESP32--ESPhome--FFT-/actions/workflows/esphome-ci.yml)
+CI status is reflected by the badge above; the latest run is passing.
 
 An ESP32-based vibration sensor node that measures **structure-borne noise (Körperschall)** from household devices like well pumps, ventilation systems, and motors. It performs real-time FFT analysis on-board and publishes spectral data to Home Assistant via ESPHome.
 
@@ -54,66 +55,17 @@ An ESP32-based vibration sensor node that measures **structure-borne noise (Kör
 - Mount close to vibration source (e.g., near pump pipe or supporting wall)
 - **Avoid**: Thick, soft, foam-like adhesives (they dampen vibrations)
 
-## Quick Start
+## Install & Upload (ESPHome)
 
-### 1. Clone Repository
+Use ESPHome (Dashboard or CLI) to build and upload:
 
-```bash
-git clone https://github.com/MomoRC-tech/Body-sound-sensor--ESP32--ESPhome--FFT-.git
-cd Body-sound-sensor--ESP32--ESPhome--FFT-
-```
-
-### 2. Configure Secrets
-
-Copy the example secrets file and edit with your credentials:
-
-```powershell
-Copy-Item secrets.yaml.example secrets.yaml
-```
-
-Edit `secrets.yaml`:
-
-```yaml
-wifi_ssid: "MOMOWLAN"
-wifi_password: "your_actual_password"
-api_encryption_key: "generated_base64_key"
-ota_password: "your_ota_password"
-```
-
-Generate API key with PowerShell:
-```powershell
-$bytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-[Convert]::ToBase64String($bytes)
-```
-
-Or with OpenSSL:
-```bash
-openssl rand -base64 32
-```
-
-### 3. Install ESPHome
-
-```powershell
-pip install esphome
-```
-
-### 4. Compile and Upload
-
-```powershell
-# Validate configuration
-esphome config body_sound_sensor.yaml
-
-# Compile firmware
-esphome compile body_sound_sensor.yaml
-
-# Upload to ESP32 (first time via USB)
-esphome upload body_sound_sensor.yaml
-```
-
-### 5. Add to Home Assistant
-
-The device should automatically appear in Home Assistant via the ESPHome integration.
+- Copy project sources into your ESPHome folder (e.g., Home Assistant `config/esphome/`).
+- Copy `secrets.yaml.example` to `secrets.yaml` and edit user-specific values:
+  - `wifi_ssid`, `wifi_password`
+  - `api_encryption_key` (32-byte base64)
+  - `ota_password`
+- Build and upload `body_sound_sensor.yaml` via ESPHome Dashboard, or run `esphome upload body_sound_sensor.yaml`.
+- After flashing, the device appears in Home Assistant via the ESPHome integration.
 
 ## Exposed Sensors
 
@@ -195,7 +147,11 @@ The following parameters can be tuned in `mpu_fft_json.h`:
 ```
 .
 ├── body_sound_sensor.yaml       # ESPHome configuration
-├── mpu_fft_json.h               # C++ custom component (FFT processing)
+├── custom_components/
+│   └── mpu_fft_json/
+│       ├── sensor.py            # ESPHome codegen sensors
+│       ├── text_sensor.py       # ESPHome codegen text sensors
+│       └── mpu_fft_json.h       # C++ custom component (FFT processing)
 ├── secrets.yaml.example         # Template for WiFi/API credentials
 ├── setup.ps1                    # Automated setup script
 ├── release.ps1                  # Release helper script
@@ -207,12 +163,18 @@ The following parameters can be tuned in `mpu_fft_json.h`:
 │   ├── SETUP.md                 # Detailed setup guide
 │   ├── HARDWARE.md              # Hardware assembly instructions
 │   ├── CI_CD.md                 # CI/CD documentation
-│   └── API.md                   # JSON API documentation
+│   └── CI_CD_FAQ.md             # CI/CD FAQ and tips
 ├── examples/
-│   ├── node-red/                # Node-RED flow examples
 │   └── python/                  # Python analysis scripts
 └── README.md                    # This file
 ```
+
+## Documentation
+
+- Hardware: `docs/HARDWARE.md`
+- Setup: `docs/SETUP.md`
+- CI/CD: `docs/CI_CD.md`
+- CI/CD FAQ: `docs/CI_CD_FAQ.md`
 
 ## Troubleshooting
 
