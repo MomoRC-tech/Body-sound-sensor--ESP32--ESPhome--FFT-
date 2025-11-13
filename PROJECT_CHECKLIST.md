@@ -88,9 +88,9 @@
 - [ ] Look for ESPHome auto-discovery
 - [ ] Configure with API key from secrets.yaml
 - [ ] Verify 3 sensors appear:
-  - [ ] Brunnen Vibration RMS
-  - [ ] Brunnen FFT CPU Load
-  - [ ] Brunnen Spectrum JSON
+  - [ ] Body Sound Vibration RMS
+  - [ ] Body Sound FFT CPU Load
+  - [ ] Body Sound Spectrum JSON
 
 ### Validation
 - [ ] All sensors showing values
@@ -184,7 +184,7 @@ binary_sensor:
       pump_active:
         friendly_name: "Well Pump Active"
         value_template: >
-          {{ states('sensor.brunnen_vibration_rms') | float > 0.02 }}
+          {{ states('sensor.body_sound_vibration_rms') | float > 0.02 }}
 ```
 
 - [ ] Test automations with manual pump/fan operation

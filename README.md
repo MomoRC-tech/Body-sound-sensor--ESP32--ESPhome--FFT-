@@ -70,17 +70,17 @@ Use ESPHome (Dashboard or CLI) to build and upload:
 ## Exposed Sensors
 
 ### 1. Vibration RMS (`sensor`)
-- **Name**: `Brunnen Vibration RMS`
+- **Name**: `Body Sound Vibration RMS`
 - **Unit**: `g` (gravitational acceleration)
 - **Purpose**: Overall vibration level for on/off detection and thresholds
 
 ### 2. CPU Load (`sensor`)
-- **Name**: `Brunnen FFT CPU Load`
+- **Name**: `Body Sound FFT CPU Load`
 - **Unit**: `%`
 - **Purpose**: Monitor ESP32 performance (should stay < 70-80%)
 
 ### 3. Spectrum JSON (`text_sensor`)
-- **Name**: `Brunnen Spectrum JSON`
+- **Name**: `Body Sound Spectrum JSON`
 - **Format**: JSON object with spectral data
 
 **Example JSON Output:**

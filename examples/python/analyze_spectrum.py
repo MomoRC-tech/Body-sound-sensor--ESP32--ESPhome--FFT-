@@ -184,7 +184,7 @@ def connect_to_homeassistant_websocket():
     # Configuration
     HA_URL = "ws://homeassistant.local:8123/api/websocket"
     HA_TOKEN = "YOUR_LONG_LIVED_ACCESS_TOKEN"
-    ENTITY_ID = "text_sensor.brunnen_spectrum_json"
+    ENTITY_ID = "text_sensor.body_sound_spectrum_json"
     
     def on_message(ws, message):
         msg = json.loads(message)

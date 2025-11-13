@@ -193,7 +193,7 @@ esphome logs body_sound_sensor.yaml
 ✅ **Success Indicators:**
 ```
 [I][app:102]: ESPHome version compiled on Nov 13 2025
-[I][app:104]: Project: brunnen_vibration_fft
+[I][app:104]: Project: body_sound_vibration_fft
 [C][wifi:038]: Setting up WiFi...
 [C][wifi:051]: WiFi Connected!
 [I][i2c.arduino:068]: Found i2c device at address 0x68
@@ -247,14 +247,14 @@ esphome logs body_sound_sensor.yaml
 
 You should see RMS values change:
 ```
-[sensor:123]: 'Brunnen Vibration RMS': Got value 0.0023
-[sensor:123]: 'Brunnen Vibration RMS': Got value 0.0456  # <- increased when tapped
-[sensor:123]: 'Brunnen Vibration RMS': Got value 0.0018
+[sensor:123]: 'Body Sound Vibration RMS': Got value 0.0023
+[sensor:123]: 'Body Sound Vibration RMS': Got value 0.0456  # <- increased when tapped
+[sensor:123]: 'Body Sound Vibration RMS': Got value 0.0018
 ```
 
 Also check for JSON spectrum updates:
 ```
-[text_sensor:047]: 'Brunnen Spectrum JSON': Got value {"fs":1000.0,"n":512,"bin_hz":1.953,"rms":0.0234,"peak_hz":48.2,"bands":[...]}
+[text_sensor:047]: 'Body Sound Spectrum JSON': Got value {"fs":1000.0,"n":512,"bin_hz":1.953,"rms":0.0234,"peak_hz":48.2,"bands":[...]}
 ```
 
 ### 11. Add to Home Assistant
@@ -265,9 +265,9 @@ Also check for JSON spectrum updates:
 4. Click **Configure**
 5. Enter the API encryption key from `secrets.yaml`
 6. The device should appear with 3 sensors:
-   - Brunnen Vibration RMS
-   - Brunnen FFT CPU Load
-   - Brunnen Spectrum JSON
+   - Body Sound Vibration RMS
+   - Body Sound FFT CPU Load
+   - Body Sound Spectrum JSON
 
 ### 12. Mount Sensor (Final Step)
 

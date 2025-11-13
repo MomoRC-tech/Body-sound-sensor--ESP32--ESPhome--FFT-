@@ -94,8 +94,8 @@ Hard resetting via RTS pin...
 [I][i2c:068]: Found i2c device at address 0x68  ← MPU6050 detected!
 [I][MPU_FFT:123]: MPU6050 FFT Component initialized
 [I][MPU_FFT:124]: Sample rate: 1000 Hz, FFT size: 512
-[sensor:123]: 'Brunnen Vibration RMS': Got value 0.0023
-[text_sensor:047]: 'Brunnen Spectrum JSON': Got value {"fs":1000.0,...}
+[sensor:123]: 'Body Sound Vibration RMS': Got value 0.0023
+[text_sensor:047]: 'Body Sound Spectrum JSON': Got value {"fs":1000.0,...}
 ```
 
 ### In Home Assistant
@@ -103,9 +103,9 @@ Hard resetting via RTS pin...
 **Settings → Devices & Services → ESPHome**
 
 You should see device with 3 sensors:
-1. **Brunnen Vibration RMS** - Overall vibration level (0.001-0.05g typical)
-2. **Brunnen FFT CPU Load** - ESP32 CPU usage (should be 30-50%)
-3. **Brunnen Spectrum JSON** - Full spectral data
+1. **Body Sound Vibration RMS** - Overall vibration level (0.001-0.05g typical)
+2. **Body Sound FFT CPU Load** - ESP32 CPU usage (should be 30-50%)
+3. **Body Sound Spectrum JSON** - Full spectral data
 
 ---
 
@@ -150,9 +150,9 @@ esphome logs body_sound_sensor.yaml
 
 **Tap the MPU6050** → RMS value should spike:
 ```
-[sensor:123]: 'Brunnen Vibration RMS': 0.0023  ← idle
-[sensor:123]: 'Brunnen Vibration RMS': 0.0456  ← tapped!
-[sensor:123]: 'Brunnen Vibration RMS': 0.0019  ← back to idle
+[sensor:123]: 'Body Sound Vibration RMS': 0.0023  ← idle
+[sensor:123]: 'Body Sound Vibration RMS': 0.0456  ← tapped!
+[sensor:123]: 'Body Sound Vibration RMS': 0.0019  ← back to idle
 ```
 
 ---
