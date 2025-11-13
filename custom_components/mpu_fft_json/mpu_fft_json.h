@@ -49,61 +49,61 @@ public:
 
   void setup() override {
     ESP_LOGD("MPU_FFT", "Setting up MPU6050 FFT Component...");
-    
+
     // Wake up MPU6050 (clear sleep bit in PWR_MGMT_1)
     if (!this->write_byte(MPU_PWR_MGMT_1, 0x00)) {
       ESP_LOGE("MPU_FFT", "Failed to wake up MPU6050 sensor!");
       this->mark_failed();
       return;
     }
-    
+
     esphome::delay(100);  // Give sensor time to wake up
-    
+
     // Initialize timing and state
     last_sample_us_ = esphome::micros();
     sample_index_ = 0;
     dc_avg_ = 1.0f;  // Initialize to ~1g (gravity)
-    
+
     // Initialize CPU load tracking
     load_window_start_us_ = last_sample_us_;
     busy_time_us_ = 0;
-    
+
     // Clear buffers
     for (uint16_t i = 0; i < FFT_SAMPLES; i++) {
       vReal_[i] = 0.0;
       vImag_[i] = 0.0;
     }
-    
+
     ESP_LOGI("MPU_FFT", "MPU FFT Component initialized successfully");
-    ESP_LOGI("MPU_FFT", "Sample rate: %.0f Hz, FFT size: %d, Bands: %d", 
+    ESP_LOGI("MPU_FFT", "Sample rate: %.0f Hz, FFT size: %d, Bands: %d",
              SAMPLE_FREQUENCY, FFT_SAMPLES, FFT_BANDS);
   }
 
   void loop() override {
     uint32_t loop_start = esphome::micros();
     uint32_t now = esphome::micros();
-    
+
     // Maintain constant sampling rate
     if ((now - last_sample_us_) >= SAMPLE_PERIOD_US) {
       last_sample_us_ = now;
       sample_once_();
     }
-    
+
     // Update CPU load periodically
     uint32_t window_elapsed = now - load_window_start_us_;
     if (window_elapsed >= LOAD_WINDOW_US) {
       float load = (float)busy_time_us_ / (float)window_elapsed;
       float cpu_load = load * 100.0f;
-      
+
       if (cpu_load_sensor_ && (cpu_load_sensor_->has_state() || cpu_load > 1.0f)) {
         cpu_load_sensor_->publish_state(cpu_load);
       }
-      
+
       // Reset for next window
       busy_time_us_ = 0;
       load_window_start_us_ = now;
     }
-    
+
     // Accumulate busy time
     uint32_t loop_end = esphome::micros();
     busy_time_us_ += (loop_end - loop_start);
@@ -118,12 +118,12 @@ protected:
   // FFT buffers
   double vReal_[FFT_SAMPLES];
   double vImag_[FFT_SAMPLES];
-  
+
   // Sampling state
   uint16_t sample_index_ = 0;
   uint32_t last_sample_us_ = 0;
   float dc_avg_ = 1.0f;
-  
+
   // CPU load tracking
   uint32_t load_window_start_us_ = 0;
   uint32_t busy_time_us_ = 0;
@@ -133,22 +133,22 @@ protected:
   // ========================================================================
   bool read_accel_g_(float &ax, float &ay, float &az) {
     uint8_t data[6];
-    
+
     if (!this->read_bytes(MPU_ACCEL_XOUT_H, data, 6)) {
       ESP_LOGW("MPU_FFT", "Failed to read accelerometer data");
       return false;
     }
-    
+
     // Combine high and low bytes (big-endian)
     int16_t raw_ax = (int16_t)((data[0] << 8) | data[1]);
     int16_t raw_ay = (int16_t)((data[2] << 8) | data[3]);
     int16_t raw_az = (int16_t)((data[4] << 8) | data[5]);
-    
+
     // Convert to g units
     ax = raw_ax * ACCEL_SCALE;
     ay = raw_ay * ACCEL_SCALE;
     az = raw_az * ACCEL_SCALE;
-    
+
     return true;
   }
 
@@ -157,27 +157,27 @@ protected:
   // ========================================================================
   void sample_once_() {
     float ax, ay, az;
-    
+
     if (!read_accel_g_(ax, ay, az)) {
       return;
     }
-    
+
     // Compute vector magnitude
     float a_total = sqrt(ax*ax + ay*ay + az*az);
-    
+
     // High-pass filter (remove DC component / gravity)
     dc_avg_ = dc_avg_ + DC_ALPHA * (a_total - dc_avg_);
     float a_hp = a_total - dc_avg_;
-    
+
     // Store in FFT buffer
     vReal_[sample_index_] = a_hp;
     vImag_[sample_index_] = 0.0;
     sample_index_++;
-    
+
     // Process window when full
     if (sample_index_ >= FFT_SAMPLES) {
       process_window_();
-      
+
       // Handle overlap (50%)
       if (WINDOW_SHIFT < FFT_SAMPLES) {
         uint16_t keep = FFT_SAMPLES - WINDOW_SHIFT;
@@ -202,36 +202,36 @@ protected:
       sum_sq += vReal_[i] * vReal_[i];
     }
     float rms = sqrt(sum_sq / FFT_SAMPLES);
-    
+
     // Publish RMS
     if (rms_sensor_) {
       rms_sensor_->publish_state(rms);
     }
-    
+
     // 2. Perform FFT (arduinoFFT v2 API)
     ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal_, vImag_, FFT_SAMPLES, SAMPLE_FREQUENCY);
     FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);
     FFT.compute(FFTDirection::Forward);
     FFT.complexToMagnitude();
-    
+
     // 3. Compute band energies
     float bands[FFT_BANDS];
     float bin_hz = SAMPLE_FREQUENCY / FFT_SAMPLES;
     float f_max = SAMPLE_FREQUENCY / 2.0f;
     float band_width = f_max / FFT_BANDS;
     uint16_t nyquist = FFT_SAMPLES / 2;
-    
+
     for (uint8_t b = 0; b < FFT_BANDS; b++) {
       float f_start = b * band_width;
       float f_end = (b + 1) * band_width;
-      
+
       uint16_t k_start = (uint16_t)(f_start / bin_hz);
       uint16_t k_end = (uint16_t)(f_end / bin_hz + 0.5f);
-      
+
       // Clip range, ignore DC bin
       if (k_start < 1) k_start = 1;
       if (k_end >= nyquist) k_end = nyquist - 1;
-      
+
       // Sum squared magnitudes in band
       double energy = 0.0;
       for (uint16_t k = k_start; k <= k_end; k++) {
@@ -239,7 +239,7 @@ protected:
       }
       bands[b] = energy;
     }
-    
+
     // 4. Find dominant frequency (peak)
     double max_mag = 0.0;
     uint16_t max_k = 0;
@@ -250,7 +250,7 @@ protected:
       }
     }
     float peak_freq = max_k * bin_hz;
-    
+
     // 5. Build JSON string
     String json = "{";
     json += "\"fs\":" + String(SAMPLE_FREQUENCY, 1) + ",";
@@ -259,14 +259,14 @@ protected:
     json += "\"rms\":" + String(rms, 6) + ",";
     json += "\"peak_hz\":" + String(peak_freq, 2) + ",";
     json += "\"bands\":[";
-    
+
     for (uint8_t b = 0; b < FFT_BANDS; b++) {
       if (b > 0) json += ",";
       json += String(bands[b], 2);
     }
-    
+
     json += "]}";
-    
+
     // Publish JSON spectrum
     if (spectrum_text_) {
       spectrum_text_->publish_state(json.c_str());
