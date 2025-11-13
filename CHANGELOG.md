@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.3 - 2025-11-13
+
+
+
+
 ## v0.9.2 - 2025-11-13
 
 - fix: restore MPUFftJsonComponent structure and namespace; clean JSON/diagnostics and FFT processing
