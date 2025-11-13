@@ -151,6 +151,17 @@ jobs:
           print(f"New version: {new_version}")
           EOF
 
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          VERSION="${{ steps.new_version.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag $VERSION already exists. Will skip tag creation."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Update CHANGELOG.md and README.md
         run: |
           VERSION="${{ steps.new_version.outputs.version }}"
@@ -184,6 +195,7 @@ jobs:
           git push origin HEAD:${GITHUB_REF##*/}
 
       - name: Create release tag
+        if: steps.check_tag.outputs.exists == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
