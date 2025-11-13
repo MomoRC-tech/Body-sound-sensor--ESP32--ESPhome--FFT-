@@ -53,6 +53,13 @@ mpu_fft_json:
   address: 0x68
   # Limit band analysis to a maximum frequency (Hz); set to 0 or omit for full Nyquist
   max_analysis_hz: 300.0
+  # Optional tuning (change requires firmware update / device reboot):
+  # sample_frequency: 1000.0   # Hz
+  # fft_samples: 512           # One of [128, 256, 512, 1024, 2048]
+  # fft_bands: 16              # 1..64
+  # window_shift: 0            # 0 = 50% overlap; else number of samples to shift
+  # dc_alpha: 0.01             # High-pass filter coefficient
+  # load_window_us: 1000000    # CPU load averaging window (µs)
 
 # Sensors from MPU FFT component
 sensor:

@@ -157,16 +157,16 @@ Basic hardware requirements are:
 
 ## Configuration & Tuning
 
-The following parameters can be tuned in `mpu_fft_json.h`:
+The following parameters can be tuned (via YAML options; changing values requires firmware re-upload and device reboot):
 
 | Parameter           | Default   | Description                                  |
 |---------------------|-----------|----------------------------------------------|
-| `SAMPLE_FREQUENCY`  | 1000 Hz   | Sampling rate (Nyquist = 500 Hz)            |
-| `FFT_SAMPLES`       | 512       | FFT window size (power of 2)                |
-| `FFT_BANDS`         | 16        | Number of frequency bands                   |
-| `WINDOW_SHIFT`      | 256       | Overlap amount (50%)                        |
-| `DC_ALPHA`          | 0.01      | High-pass filter coefficient                |
-| `LOAD_WINDOW_US`    | 1,000,000 | CPU load averaging window (µs)              |
+| `sample_frequency`  | 1000.0    | Sampling rate (Nyquist = fs/2)              |
+| `fft_samples`       | 512       | FFT window size (power of 2)                |
+| `fft_bands`         | 16        | Number of frequency bands                   |
+| `window_shift`      | 0         | 0 = 50% overlap; else sample shift          |
+| `dc_alpha`          | 0.01      | High-pass filter coefficient                |
+| `load_window_us`    | 1,000,000 | CPU load averaging window (µs)              |
 
 Component options (YAML):
 
@@ -177,6 +177,12 @@ mpu_fft_json:
    id: mpu_fft
    address: 0x68
    max_analysis_hz: 300.0
+   sample_frequency: 1000.0
+   fft_samples: 512
+   fft_bands: 16
+   window_shift: 0
+   dc_alpha: 0.01
+   load_window_us: 1000000
 ```
 
 **Performance Considerations:**
