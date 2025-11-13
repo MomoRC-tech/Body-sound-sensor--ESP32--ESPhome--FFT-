@@ -3,6 +3,10 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: 'Explicit version (e.g., 0.9.0). Overrides bump.'
+        required: false
+        type: string
       version_bump:
         description: 'Version bump type'
         required: true
@@ -115,23 +119,32 @@ jobs:
         run: |
           python << 'EOF'
           import os, re
-          latest_tag = os.environ.get('LATEST_TAG') or ''
-          if not latest_tag:
+          explicit = "${{ github.event.inputs.version }}".strip()
+          if explicit:
+            v = explicit
+            if not v.startswith('v'):
+              v = 'v' + v
+            new_version = v
+            parts = v.lstrip('v').split('.')
+            major, minor, patch = (int(parts[0]), int(parts[1]), int(parts[2]))
+          else:
+            latest_tag = os.environ.get('LATEST_TAG') or ''
+            if not latest_tag:
               latest_tag = "${{ steps.current_version.outputs.latest_tag }}"
-          bump_type = "${{ github.event.inputs.version_bump }}"
-          version = latest_tag.lstrip('v')
-          m = re.match(r'(\d+)\.(\d+)\.(\d+)', version)
-          if not m:
+            bump_type = "${{ github.event.inputs.version_bump }}"
+            version = latest_tag.lstrip('v')
+            m = re.match(r'(\d+)\.(\d+)\.(\d+)', version)
+            if not m:
               major, minor, patch = 0,0,0
-          else:
+            else:
               major, minor, patch = map(int, m.groups())
-          if bump_type == 'major':
+            if bump_type == 'major':
               major, minor, patch = major+1, 0, 0
-          elif bump_type == 'minor':
+            elif bump_type == 'minor':
               minor, patch = minor+1, 0
-          else:
+            else:
               patch += 1
-          new_version = f"v{major}.{minor}.{patch}"
+            new_version = f"v{major}.{minor}.{patch}"
           with open(os.environ['GITHUB_OUTPUT'],'a') as f:
               f.write(f"version={new_version}\n")
               f.write(f"version_number={major}.{minor}.{patch}\n")
