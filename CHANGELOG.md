@@ -2,6 +2,13 @@
 
 ## v0.9.0 - 2025-11-13
 
+- ci(release): skip tag creation when tag already exists
+- chore(release): update CHANGELOG and README for v0.9.0
+- chore(docs): generalize sensor names from Brunnen to Body Sound across docs and examples
+
+
+## v0.9.0 - 2025-11-13
+
 - chore(docs): generalize sensor names from Brunnen to Body Sound across docs and examples
 
 
