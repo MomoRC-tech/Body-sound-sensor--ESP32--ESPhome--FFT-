@@ -1,7 +1,7 @@
 # ESP32 Vibration FFT Analyzer
 
 <!-- VERSION:START -->
-Latest Release: v0.0.2 (2025-11-13)
+Latest Release: v0.9.0 (2025-11-13)
 Tested with ESPHome: Version: 2025.10.5
 <!-- VERSION:END -->
 
