@@ -2,6 +2,11 @@
 
 ## v0.9.0 - 2025-11-13
 
+- chore(docs): generalize sensor names from Brunnen to Body Sound across docs and examples
+
+
+## v0.9.0 - 2025-11-13
+
 - ci: make clang-format non-blocking; release: support explicit version override
 - ci: fix API key generation and header path in esphome-ci workflow
 - docs(readme): link docs/*.md with clickable markdown
