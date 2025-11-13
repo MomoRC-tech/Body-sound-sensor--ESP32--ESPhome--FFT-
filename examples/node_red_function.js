@@ -1,8 +1,8 @@
 // Node-RED Function: Parse Body Sound Spectrum JSON and prepare InfluxDB payload
-// Assumes upstream HA events:state node sets msg.payload to the text sensor state (string JSON)
-// and (optionally) msg.cpu_load contains latest CPU load numeric value from HA.
-// Measurement naming and tag values can be customized.
-// Schema version gating allows forward-compatible parsing.
+// Use with Home Assistant 'server-state-changed' node. If that node outputs object msg.data.new_state.state,
+// set msg.payload = msg.data.new_state.state via a preceding Change node OR adapt raw extraction below.
+// Optionally supply latest CPU load via flow context (flow.get('cpu_load_latest')) rather than msg.cpu_load.
+// This function mirrors logic in examples/node_red_flow.json but can be used standalone.
 
 // CONFIGURABLE CONSTANTS
 const MEASUREMENT = "body_sound";
@@ -45,7 +45,11 @@ function parseSpectrum(raw) {
   fields.seq = Number(j.seq || 0);
 
   // Optional CPU load passed separately (so we don't need a second flow)
-  if (typeof msg.cpu_load !== 'undefined') {
+  // Prefer cached CPU if available
+  const cpuCached = flow.get('cpu_load_latest');
+  if (typeof cpuCached !== 'undefined') {
+    fields.cpu_load = Number(cpuCached);
+  } else if (typeof msg.cpu_load !== 'undefined') {
     fields.cpu_load = Number(msg.cpu_load);
   }
 
