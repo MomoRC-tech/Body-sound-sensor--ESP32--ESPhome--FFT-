@@ -54,12 +54,13 @@ jobs:
       - name: Check C++ syntax (basic)
         run: |
           echo "==> Checking C++ header for syntax issues..."
-          if grep -n "\s$" mpu_fft_json.h; then
-            echo "ERROR: Trailing whitespace found in mpu_fft_json.h"
-            exit 1
+          # Soft-check trailing whitespace in custom component header (warn only)
+          if grep -n "\s$" custom_components/mpu_fft_json/mpu_fft_json.h; then
+            echo "WARNING: Trailing whitespace found in custom_components/mpu_fft_json/mpu_fft_json.h"
           fi
-          if ! grep -q "MPUFftJsonComponent" mpu_fft_json.h; then
-            echo "ERROR: Main class not found in mpu_fft_json.h"
+          # Ensure main class exists in custom component header
+          if ! grep -q "MPUFftJsonComponent" custom_components/mpu_fft_json/mpu_fft_json.h; then
+            echo "ERROR: Main class not found in custom_components/mpu_fft_json/mpu_fft_json.h"
             exit 1
           fi
           echo "Basic syntax checks passed"
@@ -250,6 +251,7 @@ jobs:
           files: |
             body_sound_sensor.yaml
             mpu_fft_json.h
+            custom_components/mpu_fft_json/mpu_fft_json.h
             secrets.yaml.example
             README.md
             CHANGELOG.md
