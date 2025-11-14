@@ -67,7 +67,6 @@ Basic hardware requirements are:
 - **Connection**: I²C bus (3.3 V)
 
 <details>
-![Hardware](https://img.shields.io/badge/section-Hardware-2196f3)
 <summary><strong>🟣 Expand for detailed hardware configuration & wiring</strong></summary>
 
 ### Your Configuration
@@ -125,7 +124,7 @@ Basic hardware requirements are:
 - **Format**: JSON object with spectral data
 
 <details>
-<summary><strong><span style="color:#2196f3">Expand for JSON example and field description</span></strong></summary>
+<summary><strong>🟣 Expand for JSON example and field description</strong></summary>
 
 **Example JSON Output:**
 ```json
@@ -250,7 +249,7 @@ mpu_fft_json:
 ## Use Cases
 
 <details>
-<summary><strong><span style="color:#2196f3">Expand for detailed use cases</span></strong></summary>
+<summary><strong>🟣 Expand for detailed use cases</strong></summary>
 
 ### 1. Device Identification
 
@@ -280,7 +279,7 @@ mpu_fft_json:
 ## Project Structure & Documentation
 
 <details>
-<summary><strong><span style="color:#2196f3">Expand for repository layout and documentation links</span></strong></summary>
+<summary><strong>🟣 Expand for repository layout and documentation links</strong></summary>
 
 ### Project Structure
 
@@ -322,7 +321,7 @@ mpu_fft_json:
 ## Troubleshooting
 
 <details>
-<summary><strong><span style="color:#2196f3">Expand for troubleshooting tips</span></strong></summary>
+<summary><strong>🟣 Expand for troubleshooting tips</strong></summary>
 
 ### Sensor Not Detected
 
@@ -356,7 +355,7 @@ mpu_fft_json:
 ## Development & CI/CD
 
 <details>
-<summary><strong><span style="color:#2196f3">Expand for contributing and release workflow</span></strong></summary>
+<summary><strong>🟣 Expand for contributing and release workflow</strong></summary>
 
 ### Contributing
 
