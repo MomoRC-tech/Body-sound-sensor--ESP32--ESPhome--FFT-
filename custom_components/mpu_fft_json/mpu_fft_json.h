@@ -105,7 +105,8 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
     last_sample_us_ = esphome::micros();
     load_window_start_us_ = last_sample_us_;
     sample_index_ = 0;
-    dc_avg_ = 1.0f;
+    dc_ax_ = dc_ay_ = dc_az_ = 0.0f;
+    axis_dc_init_ = false;
     busy_time_us_ = 0;
     ESP_LOGI(
         TAG,
@@ -177,7 +178,11 @@ protected:
   // Sampling
   uint16_t sample_index_{0};
   uint32_t last_sample_us_{0};
-  float dc_avg_{1.0f};
+  // Per-axis DC averages for high-pass filtering
+  float dc_ax_{0.0f};
+  float dc_ay_{0.0f};
+  float dc_az_{0.0f};
+  bool axis_dc_init_{false};
 
   // CPU load
   uint32_t load_window_start_us_{0};
@@ -217,9 +222,21 @@ protected:
       return;
     }
 
-    float a_total = sqrt(ax * ax + ay * ay + az * az);
-    dc_avg_ = dc_avg_ + dc_alpha_ * (a_total - dc_avg_);
-    float a_hp = a_total - dc_avg_;
+    // Initialize DC baselines on first sample
+    if (!axis_dc_init_) {
+      dc_ax_ = ax;
+      dc_ay_ = ay;
+      dc_az_ = az;
+      axis_dc_init_ = true;
+    }
+    // Update per-axis DC averages
+    dc_ax_ += dc_alpha_ * (ax - dc_ax_);
+    dc_ay_ += dc_alpha_ * (ay - dc_ay_);
+    dc_az_ += dc_alpha_ * (az - dc_az_);
+    float ax_hp = ax - dc_ax_;
+    float ay_hp = ay - dc_ay_;
+    float az_hp = az - dc_az_;
+    float a_hp = sqrt(ax_hp * ax_hp + ay_hp * ay_hp + az_hp * az_hp);
 
     vReal_[sample_index_] = a_hp;
     vImag_[sample_index_] = 0.0;
@@ -251,6 +268,13 @@ protected:
     float rms = sqrt(sum_sq / fft_samples_);
     if (rms_sensor_) {
       rms_sensor_->publish_state(rms);
+    }
+    // Min/max of high-passed magnitude for diagnostics
+    double hp_min = vReal_[0];
+    double hp_max = vReal_[0];
+    for (uint16_t i = 1; i < fft_samples_; i++) {
+      if (vReal_[i] < hp_min) hp_min = vReal_[i];
+      if (vReal_[i] > hp_max) hp_max = vReal_[i];
     }
 
     // FFT
@@ -357,7 +381,7 @@ protected:
       if (b > 0) {
         bands += ",";
       }
-      bands += String(energy, 2);
+      bands += String(energy, 6);  // higher precision to expose small energies
     }
     json.replace("\"bands\":[]", "\"bands\":[" + bands + "]");
 
@@ -395,6 +419,7 @@ protected:
     if (spectrum_text_) {
       spectrum_text_->publish_state(json.c_str());
     }
+    ESP_LOGD(TAG, "seq=%u rms=%.6f hp_min=%.6f hp_max=%.6f peak=%.2fHz", seq_, rms, hp_min, hp_max, peak_freq);
 
     // advance sequence counter
     seq_++;
