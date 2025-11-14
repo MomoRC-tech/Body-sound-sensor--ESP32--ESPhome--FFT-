@@ -1,18 +1,20 @@
 esphome:
-  name: body_sound_sensor
-  friendly_name: Body Sound Sensor
-  comment: "ESP32-WROOM D1 Mini vibration sensor with MPU6050 for structure-borne noise detection"
+  name: "body-sound-sensor"
+  friendly_name: body sound sensor
+  min_version: 2025.9.0
+  name_add_mac_suffix: false
+  comment: "ESP32 vibration sensor with MPU6050 for structure-borne noise detection"
+
+esp32:
+  variant: esp32
+  framework:
+    type: arduino
 
 # External component for MPU FFT processing
 external_components:
   - source:
       type: local
       path: custom_components
-
-esp32:
-  board: wemos_d1_mini32
-  framework:
-    type: arduino
 
 # Enable logging
 logger:
@@ -38,6 +40,10 @@ wifi:
     ssid: "Body Sound Sensor Fallback"
     password: "12345678"
 
+# simple webserver 
+web_server:
+  port: 80
+
 captive_portal:
 
 # Wall clock time (optional but recommended for epoch timestamps)
@@ -58,14 +64,14 @@ mpu_fft_json:
   address: 0x68
   time_id: sntp_time
   # Limit band analysis to a maximum frequency (Hz); set to 0 or omit for full Nyquist
-  max_analysis_hz: 300.0
+  max_analysis_hz: 500.0
   # Optional tuning (change requires firmware update / device reboot):
-  # sample_frequency: 1000.0   # Hz
-  # fft_samples: 512           # One of [128, 256, 512, 1024, 2048]
-  # fft_bands: 16              # 1..64
-  # window_shift: 0            # 0 = 50% overlap; else number of samples to shift
-  # dc_alpha: 0.01             # High-pass filter coefficient
-  # load_window_us: 1000000    # CPU load averaging window (µs)
+  sample_frequency: 1000.0   # Hz
+  fft_samples: 512           # One of [128, 256, 512, 1024, 2048]
+  fft_bands: 16              # 1..64
+  window_shift: 0            # 0 = 50% overlap; else number of samples to shift
+  dc_alpha: 0.01             # High-pass filter coefficient
+  load_window_us: 1000000    # CPU load averaging window (µs)
 
 # Sensors from MPU FFT component
 sensor:
