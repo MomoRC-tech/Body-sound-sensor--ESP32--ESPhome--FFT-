@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.10.0 - 2025-11-14
+
+- feat(json): add schema_version field for forward compatibility in spectrum JSON contract
+- feat(node-red): add complete flow JSON with HA events, CPU load caching, spectrum parsing, and InfluxDB output
+- feat(node-red): add derived features function computing max_band_energy, max_band_index, and spectral_centroid_hz
+- docs: add comprehensive integration blueprint (docs/INTEGRATION_PLAN.md) for HA + Node-RED + InfluxDB + Grafana setup
+- docs: enhance Node-RED function script with flow context CPU caching and schema version gating
+- docs(readme): reorganize documentation links, enhance hardware configuration section, update project references
+- chore(yaml): update main device configuration
+
 ## v0.9.6 - 2025-11-13
 
 - docs: refresh AI coding agent guide (`.github/copilot-instructions.md`) for concise, actionable repo-specific instructions
