@@ -1,4 +1,4 @@
-# ESP32 Vibration FFT Analyzer
+# ESP32 Body Sound Sensor with basic FFT Analyzer
 
 <!-- VERSION:START -->
 Latest Release: v0.9.5 (2025-11-13)
