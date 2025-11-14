@@ -47,6 +47,8 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
   ~MPUFftJsonComponent() {
     delete[] vReal_;
     delete[] vImag_;
+    delete[] fft_real_;
+    delete[] fft_imag_;
   }
 
   void setup() override {
@@ -91,6 +93,13 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
     for (uint16_t i = 0; i < fft_samples_; i++) {
       vReal_[i] = 0.0;
       vImag_[i] = 0.0;
+    }
+
+    fft_real_ = new double[fft_samples_];
+    fft_imag_ = new double[fft_samples_];
+    for (uint16_t i = 0; i < fft_samples_; i++) {
+      fft_real_[i] = 0.0;
+      fft_imag_[i] = 0.0;
     }
 
     last_sample_us_ = esphome::micros();
@@ -162,6 +171,8 @@ protected:
   // Buffers
   double *vReal_{nullptr};
   double *vImag_{nullptr};
+  double *fft_real_{nullptr};
+  double *fft_imag_{nullptr};
 
   // Sampling
   uint16_t sample_index_{0};
@@ -243,7 +254,11 @@ protected:
     }
 
     // FFT
-    ArduinoFFT<double> FFT(vReal_, vImag_, fft_samples_, sample_frequency_);
+    for (uint16_t i = 0; i < fft_samples_; i++) {
+      fft_real_[i] = vReal_[i];
+      fft_imag_[i] = 0.0;
+    }
+    ArduinoFFT<double> FFT(fft_real_, fft_imag_, fft_samples_, sample_frequency_);
     FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);
     FFT.compute(FFTDirection::Forward);
     FFT.complexToMagnitude();
@@ -258,8 +273,8 @@ protected:
     double max_mag = 0.0;
     uint16_t max_k = 0;
     for (uint16_t k = 1; k < nyquist; k++) {
-      if (vReal_[k] > max_mag) {
-        max_mag = vReal_[k];
+      if (fft_real_[k] > max_mag) {
+        max_mag = fft_real_[k];
         max_k = k;
       }
     }
@@ -337,7 +352,7 @@ protected:
       }
       double energy = 0.0;
       for (uint16_t k = k_start; k <= k_end; k++) {
-        energy += vReal_[k] * vReal_[k];
+        energy += fft_real_[k] * fft_real_[k];
       }
       if (b > 0) {
         bands += ",";

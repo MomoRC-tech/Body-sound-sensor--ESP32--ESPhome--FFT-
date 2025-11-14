@@ -21,54 +21,54 @@
 ## 📋 Phase 2: Hardware Assembly & First Boot
 
 ### Tasks
-- [ ] Wire MPU6050 to ESP32 (VCC→3.3V, GND→GND, SDA→21, SCL→22)
-- [ ] Install CP210x USB drivers (if needed)
-- [ ] Connect ESP32 to PC via USB
-- [ ] Verify COM port detection
+- [x] Wire MPU6050 to ESP32 (VCC→3.3V, GND→GND, SDA→21, SCL→22)
+- [x] Install CP210x USB drivers (if needed)
+- [x] Connect ESP32 to PC via USB
+- [x] Verify COM port detection
 
 ### Validation
-- [ ] Visual inspection of connections
-- [ ] Continuity test with multimeter (optional)
-- [ ] Power LED on both boards
+- [x] Visual inspection of connections
+- [x] Continuity test with multimeter (optional)
+- [x] Power LED on both boards
 
-**Status**: ⏳ Waiting for hardware assembly
+**Status**: ✅ Complete (Hardware assembled, connections verified, LEDs on)
 
 ---
 
 ## 📋 Phase 3: Software Configuration
 
 ### Tasks
-- [ ] Run `.\scripts\setup.ps1` OR manually create secrets.yaml
-- [ ] Generate API encryption key
-- [ ] Edit secrets.yaml with:
-  - [ ] WiFi password for MOMOWLAN
-  - [ ] Generated API key
-  - [ ] OTA password
-- [ ] Install ESPHome: `pip install esphome`
+- [x] Run `./scripts/setup.ps1` OR manually create secrets.yaml
+- [ ] Generate API encryption key (Not used – device intentionally operates without API encryption key)
+- [x] Edit secrets.yaml with:
+  - [x] WiFi password for MOMOWLAN
+  - [ ] Generated API key (N/A)
+  - [x] OTA password
+- [x] Install ESPHome: `pip install esphome`
 
 ### Validation
-- [ ] `esphome config body_sound_sensor.yaml` passes
-- [ ] No placeholder values in secrets.yaml
-- [ ] ESPHome version check: `esphome version`
+- [x] `esphome config body_sound_sensor.yaml` passes
+- [x] No placeholder values in secrets.yaml (API key intentionally omitted)
+- [x] ESPHome version check: `esphome version`
 
-**Status**: ⏳ Ready to configure
+**Status**: ✅ Complete (Configured; API encryption intentionally disabled)
 
 ---
 
 ## 📋 Phase 4: First Upload & Testing
 
 ### Tasks
-- [ ] Compile firmware: `esphome compile body_sound_sensor.yaml`
-- [ ] Upload via USB: `esphome upload body_sound_sensor.yaml`
-- [ ] Monitor logs: `esphome logs body_sound_sensor.yaml`
+- [x] Compile firmware: `esphome compile body_sound_sensor.yaml`
+- [x] Upload via USB: `esphome upload body_sound_sensor.yaml`
+- [x] Monitor logs: `esphome logs body_sound_sensor.yaml`
 
 ### Expected Log Output
-- [ ] WiFi connected to MOMOWLAN
-- [ ] I²C device found at 0x68 (or 0x69)
-- [ ] MPU6050 FFT Component initialized
-- [ ] Sample rate: 1000 Hz, FFT size: 512
-- [ ] RMS sensor publishing values
-- [ ] JSON spectrum updates
+- [x] WiFi connected to MOMOWLAN
+- [x] I²C device found at 0x68 (or 0x69)
+- [x] MPU6050 FFT Component initialized
+- [x] Sample rate: 1000 Hz, FFT size: 512
+- [x] RMS sensor publishing values
+- [x] JSON spectrum updates
 
 ### If I²C Not Detected
 - [ ] Check wiring (especially SDA/SCL)
@@ -76,29 +76,29 @@
 - [ ] Try I²C address 0x69 in YAML
 - [ ] Reseat connections
 
-**Status**: ⏳ Ready to upload
+**Status**: ✅ Complete (Firmware compiled, uploaded; logs confirmed streaming)
 
 ---
 
 ## 📋 Phase 5: Home Assistant Integration
 
 ### Tasks
-- [ ] Open Home Assistant
-- [ ] Go to Settings → Devices & Services
-- [ ] Look for ESPHome auto-discovery
-- [ ] Configure with API key from secrets.yaml
-- [ ] Verify 3 sensors appear:
-  - [ ] Body Sound Vibration RMS
-  - [ ] Body Sound FFT CPU Load
-  - [ ] Body Sound Spectrum JSON
+- [x] Open Home Assistant
+- [x] Go to Settings → Devices & Services
+- [x] Look for ESPHome auto-discovery
+- [x] Configure (API encryption disabled for this device)
+- [x] Verify 3 sensors appear:
+  - [x] Body Sound Vibration RMS
+  - [x] Body Sound FFT CPU Load
+  - [x] Body Sound Spectrum JSON
 
 ### Validation
-- [ ] All sensors showing values
-- [ ] RMS updates regularly (~1/sec)
-- [ ] CPU Load < 70%
-- [ ] JSON contains valid data
+- [x] All sensors showing values
+- [x] RMS updates regularly (~1/sec)
+- [x] CPU Load < 70%
+- [x] JSON contains valid data
 
-**Status**: ⏳ Pending Phase 4
+**Status**: ✅ Complete (Integrated and updating in Home Assistant)
 
 ---
 
@@ -117,7 +117,7 @@
 - [ ] CPU Load: 30 - 60%
 - [ ] Spectrum updates ~4/sec
 
-**Status**: ⏳ Pending Phase 5
+**Status**: ⏳ In progress (Streaming results; interactive tap/peak tests pending confirmation)
 
 ---
 
@@ -262,11 +262,11 @@ binary_sensor:
 ## 🎯 Success Criteria
 
 ### Minimum Viable Product (MVP)
-- ✅ ESP32 boots and connects to WiFi
-- ✅ MPU6050 detected on I²C bus
-- ✅ RMS values update in Home Assistant
-- ✅ CPU Load < 80%
-- ✅ JSON spectrum contains valid data
+✅ ESP32 boots and connects to WiFi (confirmed)
+✅ MPU6050 detected on I²C bus (address 0x68)
+✅ RMS values update in Home Assistant
+✅ CPU Load < 80%
+✅ JSON spectrum contains valid data (logs & HA entity)
 
 ### Full Deployment
 - ✅ Sensor mounted in final location
@@ -288,10 +288,10 @@ binary_sensor:
 | Phase | Status | Date Completed |
 |-------|--------|----------------|
 | 1. Initial Setup | ✅ Complete | Nov 13, 2025 |
-| 2. Hardware Assembly | ⏳ Pending | |
-| 3. Software Config | ⏳ Pending | |
-| 4. First Upload | ⏳ Pending | |
-| 5. HA Integration | ⏳ Pending | |
+| 2. Hardware Assembly | ✅ Complete | Nov 14, 2025 |
+| 3. Software Config | ✅ Complete | Nov 14, 2025 |
+| 4. First Upload | ✅ Complete | Nov 14, 2025 |
+| 5. HA Integration | ✅ Complete | Nov 14, 2025 |
 | 6. Vibration Testing | ⏳ Pending | |
 | 7. Physical Install | ⏳ Pending | |
 | 8. Calibration | ⏳ Pending | |
