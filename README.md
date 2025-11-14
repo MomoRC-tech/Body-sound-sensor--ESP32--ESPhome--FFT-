@@ -67,7 +67,8 @@ Basic hardware requirements are:
 - **Connection**: I²C bus (3.3 V)
 
 <details>
-<summary><strong><span style="color:#2196f3">Expand for detailed hardware configuration & wiring</span></strong></summary>
+![Hardware](https://img.shields.io/badge/section-Hardware-2196f3)
+<summary><strong>🟣 Expand for detailed hardware configuration & wiring</strong></summary>
 
 ### Your Configuration
 
