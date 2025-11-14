@@ -278,11 +278,17 @@ mpu_fft_json:
 
 ## Project Structure & Documentation
 
-<details>
-<summary><strong>🟣 Expand for repository layout and documentation links</strong></summary>
+### Documentation
+
+- Hardware: [docs/HARDWARE.md](docs/HARDWARE.md)
+- Setup: [docs/SETUP.md](docs/SETUP.md)
+- CI/CD: [docs/CI_CD.md](docs/CI_CD.md)
+- CI/CD FAQ: [docs/CI_CD_FAQ.md](docs/CI_CD_FAQ.md)
 
 ### Project Structure
 
+<details>
+<summary><strong>🟣 Expand for repository layout</strong></summary>
 ```text
 .
 ├── body_sound_sensor.yaml       # ESPHome configuration
@@ -308,13 +314,6 @@ mpu_fft_json:
 │   └── python/                  # Python analysis scripts
 └── README.md                    # This file
 ```
-
-### Documentation
-
-- Hardware: [docs/HARDWARE.md](docs/HARDWARE.md)
-- Setup: [docs/SETUP.md](docs/SETUP.md)
-- CI/CD: [docs/CI_CD.md](docs/CI_CD.md)
-- CI/CD FAQ: [docs/CI_CD_FAQ.md](docs/CI_CD_FAQ.md)
 
 </details>
 
