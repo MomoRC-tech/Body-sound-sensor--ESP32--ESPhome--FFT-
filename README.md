@@ -43,9 +43,9 @@ Use it to detect pump/fan activity, identify devices by their vibration signatur
    - Place this repository (or at least `body_sound_sensor.yaml` and `custom_components/`) in your ESPHome directory, e.g. `config/esphome/` in Home Assistant.
 
 3. **Configure Secrets**
-   - Copy `secrets.yaml.example` → `secrets.yaml` and edit:
+   - copy or edit your `secrets.yaml` or device .yaml to define the following keys:
      - `wifi_ssid`, `wifi_password`
-     - `api_encryption_key` (32-byte base64)
+     - `api_encryption_key` (32-byte base64)  (delete if unused)
      - `ota_password`
 
 4. **Build & Upload**
