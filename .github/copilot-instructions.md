@@ -7,7 +7,7 @@ ESPHome YAML (`body_sound_sensor.yaml`) → Python codegen (`custom_components/m
 Processing loop: I²C read → high‑pass (DC removal) → fill window → Hamming FFT (size 128–2048, default 512) with 50% overlap (`window_shift: 0`) → band aggregation (1–64 bands limited by `max_analysis_hz`, default 300 Hz) → construct JSON + publish sensors. Heap usage kept low: buffers allocated once in `setup()`.
 
 ### 2. Key Implementation Files
-`custom_components/mpu_fft_json/__init__.py` component registration + arduinoFFT ^2.0.4 dep.
+`custom_components/mpu_fft_json/__init__.py` component registration (uses ESP-DSP from core; no arduinoFFT).
 `sensor.py` / `text_sensor.py` define optional YAML keys → generate C++ `set_*` bindings.
 `mpu_fft_json.h` sampling, HPF, FFT, band energy, timing metadata (seq, ts_ms, epoch_ms), CPU load, JSON assembly.
 `examples/python/analyze_spectrum.py` downstream parsing + feature extraction (treat `bands[]` as feature vector).

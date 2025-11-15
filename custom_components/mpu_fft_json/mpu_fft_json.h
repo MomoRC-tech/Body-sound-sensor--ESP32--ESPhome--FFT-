@@ -2,20 +2,11 @@
 
 #include "esphome.h"
 #if defined(__has_include)
-#  if __has_include("esp_dsp.h")
-#    define MPUFFT_USE_ESPDSP 1
-#  else
-#    define MPUFFT_USE_ESPDSP 0
+#  if !__has_include("esp_dsp.h")
+#    error "ESP-DSP (esp_dsp.h) is required; arduinoFFT support removed."
 #  endif
-#else
-#  define MPUFFT_USE_ESPDSP 0
 #endif
-
-#if MPUFFT_USE_ESPDSP
 #include "esp_dsp.h"
-#else
-#include "arduinoFFT.h"
-#endif
 #include "esphome/components/time/real_time_clock.h"
 #include <cmath>
 
@@ -61,13 +52,9 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
   ~MPUFftJsonComponent() {
     delete[] vReal_;
     delete[] vImag_;
-    delete[] fft_real_;
-    delete[] fft_imag_;
-#if MPUFFT_USE_ESPDSP
     delete[] fft_work_fc32_;
     delete[] fft_mag_f32_;
     delete[] window_f32_;
-#endif
   }
 
   void setup() override {
@@ -114,24 +101,15 @@ class MPUFftJsonComponent : public Component, public i2c::I2CDevice {
       vImag_[i] = 0.0;
     }
 
-    fft_real_ = new double[fft_samples_];
-    fft_imag_ = new double[fft_samples_];
-    #if MPUFFT_USE_ESPDSP
-        // Initialize ESP-DSP FFT tables for current size
-        // 4 is maximum stages with 16-bit sin/cos table depth; NULL means internal static table
-        dsps_fft2r_init_fc32(nullptr, fft_samples_);
-        // Allocate working buffers: interleaved complex array (2*N) and magnitude (N)
-        fft_work_fc32_ = new float[fft_samples_ * 2];
-        fft_mag_f32_ = new float[fft_samples_];
-        // Precompute Hamming window
-        window_f32_ = new float[fft_samples_];
-        for (uint16_t i = 0; i < fft_samples_; i++) {
-          window_f32_[i] = 0.54f - 0.46f * cosf(2.0f * (float)M_PI * (float)i / (float)(fft_samples_ - 1));
-        }
-    #endif
+    // Initialize ESP-DSP FFT tables for current size
+    dsps_fft2r_init_fc32(nullptr, fft_samples_);
+    // Allocate working buffers: interleaved complex array (2*N) and magnitude (N)
+    fft_work_fc32_ = new float[fft_samples_ * 2];
+    fft_mag_f32_ = new float[fft_samples_];
+    // Precompute Hamming window
+    window_f32_ = new float[fft_samples_];
     for (uint16_t i = 0; i < fft_samples_; i++) {
-      fft_real_[i] = 0.0;
-      fft_imag_[i] = 0.0;
+      window_f32_[i] = 0.54f - 0.46f * cosf(2.0f * (float)M_PI * (float)i / (float)(fft_samples_ - 1));
     }
 
     last_sample_us_ = esphome::micros();
@@ -204,14 +182,10 @@ protected:
   // Buffers
   double *vReal_{nullptr};
   double *vImag_{nullptr};
-  double *fft_real_{nullptr};
-  double *fft_imag_{nullptr};
-#if MPUFFT_USE_ESPDSP
   // ESP-DSP working buffers
   float *fft_work_fc32_{nullptr};  // interleaved complex: [Re0, Im0, Re1, Im1, ...]
   float *fft_mag_f32_{nullptr};    // magnitude spectrum
   float *window_f32_{nullptr};     // Hamming window
-#endif
 
   // Sampling
   uint16_t sample_index_{0};
@@ -315,8 +289,7 @@ protected:
       if (vReal_[i] > hp_max) hp_max = vReal_[i];
     }
 
-    // FFT
-#if MPUFFT_USE_ESPDSP
+    // FFT (ESP-DSP only)
     // Load windowed samples into interleaved complex buffer
     for (uint16_t i = 0; i < fft_samples_; i++) {
       float s = (float)vReal_[i];
@@ -327,18 +300,12 @@ protected:
     // In-place complex FFT
     dsps_fft2r_fc32(fft_work_fc32_, fft_samples_);
     dsps_bit_rev2r_fc32(fft_work_fc32_, fft_samples_);
-    // Convert complex output to magnitude spectrum
-    dsps_cplx2reC_fc32(fft_work_fc32_, fft_mag_f32_, fft_samples_);
-#else
+    // Convert complex output to magnitude spectrum (manual to support ESP-DSP variants)
     for (uint16_t i = 0; i < fft_samples_; i++) {
-      fft_real_[i] = vReal_[i];
-      fft_imag_[i] = 0.0;
+      float re = fft_work_fc32_[2 * i + 0];
+      float im = fft_work_fc32_[2 * i + 1];
+      fft_mag_f32_[i] = sqrtf(re * re + im * im);
     }
-    ArduinoFFT<double> FFT(fft_real_, fft_imag_, fft_samples_, sample_frequency_);
-    FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);
-    FFT.compute(FFTDirection::Forward);
-    FFT.complexToMagnitude();
-#endif
 
     float bin_hz = sample_frequency_ / fft_samples_;
     float f_nyquist = sample_frequency_ / 2.0f;
@@ -349,7 +316,6 @@ protected:
     // Peak
     double max_mag = 0.0;
     uint16_t max_k = 0;
-#if MPUFFT_USE_ESPDSP
     for (uint16_t k = 1; k < nyquist; k++) {
       double m = (double)fft_mag_f32_[k];
       if (m > max_mag) {
@@ -357,14 +323,6 @@ protected:
         max_k = k;
       }
     }
-#else
-    for (uint16_t k = 1; k < nyquist; k++) {
-      if (fft_real_[k] > max_mag) {
-        max_mag = fft_real_[k];
-        max_k = k;
-      }
-    }
-#endif
     float peak_freq = max_k * bin_hz;
 
     // Diagnostics
@@ -437,15 +395,11 @@ protected:
       if (k_end >= nyquist) {
         k_end = nyquist - 1;
       }
-            double energy = 0.0;
-            for (uint16_t k = k_start; k <= k_end; k++) {
-      #if MPUFFT_USE_ESPDSP
+      double energy = 0.0;
+      for (uint16_t k = k_start; k <= k_end; k++) {
         double m = (double)fft_mag_f32_[k];
         energy += m * m;
-      #else
-        energy += fft_real_[k] * fft_real_[k];
-      #endif
-            }
+      }
       if (b > 0) {
         bands += ",";
       }

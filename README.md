@@ -397,7 +397,7 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 ## Acknowledgments
 
 - [ESPHome](https://esphome.io/) – Home automation framework
-- [arduinoFFT](https://github.com/kosme/arduinoFFT) – FFT library
+- [ESP-DSP](https://github.com/espressif/esp-dsp) – Optimized DSP library for ESP32
 - Specification document contributors
 
 ## Support

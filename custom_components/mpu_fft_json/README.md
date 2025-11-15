@@ -9,7 +9,7 @@ custom_components/mpu_fft_json/
 ├── __init__.py          # Component registration and I2C setup
 ├── sensor.py            # Sensor platform (RMS, CPU load, diagnostics)
 ├── text_sensor.py       # Text sensor platform (spectrum JSON)
-└── mpu_fft_json.h       # C++ implementation with arduinoFFT v2
+└── mpu_fft_json.h       # C++ implementation using ESP-DSP
 ```
 
 ## Features
@@ -82,7 +82,7 @@ text_sensor:
 ## Dependencies
 
 - **ESPHome**: 2025.10.5+
-- **arduinoFFT**: ^2.0.4 (automatically installed)
+- **ESP-DSP**: Header `esp_dsp.h` must be available (bundled with ESP-IDF/Arduino-ESP32 cores)
 - **I2C**: Required for MPU6050 communication
 
 ## Technical Details

@@ -65,8 +65,7 @@ async def to_code(config):
     if CONF_LOAD_WINDOW_US in config:
         cg.add(var.set_load_window_us(config[CONF_LOAD_WINDOW_US]))
 
-    # Add the library dependency
-    cg.add_library("arduinoFFT", "^2.0.4")
+    # No external Arduino library required; uses ESP-DSP from core
 
     # Optional time component for wall-clock epoch
     if CONF_TIME_ID in config:

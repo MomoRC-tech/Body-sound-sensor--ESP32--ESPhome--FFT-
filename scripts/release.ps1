@@ -7,7 +7,10 @@ param(
     [string]$VersionBump = 'patch',
     
     [Parameter(Mandatory=$false)]
-    [string]$ReleaseNotes = ""
+    [string]$ReleaseNotes = "",
+
+    [Parameter(Mandatory=$false)]
+    [switch]$AutoYes
 )
 
 Write-Host "=== ESP32 Vibration FFT - Release Helper ===" -ForegroundColor Cyan
@@ -26,15 +29,22 @@ if ($gitStatus) {
     Write-Host "⚠ You have uncommitted changes:" -ForegroundColor Yellow
     git status --short
     Write-Host ""
-    $continue = Read-Host "Do you want to commit these changes? (y/N)"
-    if ($continue -eq 'y') {
-        $commitMessage = Read-Host "Enter commit message"
+    if ($AutoYes) {
+        $autoMsg = "chore(release): prep for $VersionBump"
         git add .
-        git commit -m "$commitMessage"
-        Write-Host "✓ Changes committed" -ForegroundColor Green
+        git commit -m "$autoMsg"
+        Write-Host "✓ Changes auto-committed: $autoMsg" -ForegroundColor Green
     } else {
-        Write-Host "Please commit or stash changes before releasing" -ForegroundColor Yellow
-        exit 1
+        $continue = Read-Host "Do you want to commit these changes? (y/N)"
+        if ($continue -eq 'y') {
+            $commitMessage = Read-Host "Enter commit message"
+            git add .
+            git commit -m "$commitMessage"
+            Write-Host "✓ Changes committed" -ForegroundColor Green
+        } else {
+            Write-Host "Please commit or stash changes before releasing" -ForegroundColor Yellow
+            exit 1
+        }
     }
 } else {
     Write-Host "✓ No uncommitted changes" -ForegroundColor Green
@@ -145,12 +155,15 @@ Write-Host "[4/6] Confirm version..." -ForegroundColor Yellow
 Write-Host "  Current version: $currentTag" -ForegroundColor Cyan
 Write-Host "  New version will be: $newVersion" -ForegroundColor Green
 Write-Host ""
-$confirmVersion = Read-Host "Is this version correct? (yes/N)"
-
-if ($confirmVersion -ne 'yes') {
-    Write-Host "Release cancelled - you can specify a different version bump type" -ForegroundColor Yellow
-    Write-Host "Usage: .\scripts\release.ps1 -VersionBump [patch|minor|major]" -ForegroundColor Cyan
-    exit 0
+if (-not $AutoYes) {
+    $confirmVersion = Read-Host "Is this version correct? (yes/N)"
+    if ($confirmVersion -ne 'yes') {
+        Write-Host "Release cancelled - you can specify a different version bump type" -ForegroundColor Yellow
+        Write-Host "Usage: .\scripts\release.ps1 -VersionBump [patch|minor|major]" -ForegroundColor Cyan
+        exit 0
+    }
+} else {
+    Write-Host "AutoYes enabled: accepting new version $newVersion" -ForegroundColor Yellow
 }
 
 # Confirm release
@@ -162,11 +175,14 @@ if ($ReleaseNotes) {
     Write-Host "  Notes: $ReleaseNotes" -ForegroundColor Cyan
 }
 Write-Host ""
-$confirm = Read-Host "Push to GitHub and trigger release workflow? (yes/N)"
-
-if ($confirm -ne 'yes') {
-    Write-Host "Release cancelled" -ForegroundColor Yellow
-    exit 0
+if (-not $AutoYes) {
+    $confirm = Read-Host "Push to GitHub and trigger release workflow? (yes/N)"
+    if ($confirm -ne 'yes') {
+        Write-Host "Release cancelled" -ForegroundColor Yellow
+        exit 0
+    }
+} else {
+    Write-Host "AutoYes enabled: proceeding with push and workflow trigger" -ForegroundColor Yellow
 }
 
 # Push to GitHub
